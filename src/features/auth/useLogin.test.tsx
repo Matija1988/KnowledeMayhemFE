@@ -38,7 +38,7 @@ describe("useLogin", () => {
   });
 
   it("handles service failures as blocking errors", async () => {
-    server.use(http.post("/api/identity/login", () => HttpResponse.json({ title: "Down" }, { status: 500 })));
+    server.use(http.post("**/api/identity/login", () => HttpResponse.json({ title: "Down" }, { status: 500 })));
     const { result } = renderHook(() => useLogin(), { wrapper });
 
     await act(async () => {

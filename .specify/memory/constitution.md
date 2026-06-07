@@ -1,9 +1,9 @@
 <!--
 Sync Impact Report
-Version change: 2.0.0 -> 2.1.0
-Modified principles:
-- Added VI. Consistent Visual Design System
-- Expanded Styling Strategy with dark blue / white baseline UI template
+Version change: 2.1.0 -> 2.2.0
+Modified sections:
+- Frontend CORS and Environment Configuration added
+- API integration rules expanded
 Templates requiring updates:
 - updated: .specify/templates/plan-template.md
 - updated: .specify/templates/tasks-template.md
@@ -343,4 +343,4 @@ centralized error mapping
 
 No feature component may hardcode backend host URLs.
 
-**Version**: 2.1.0 | **Ratified**: 2026-06-07 | **Last Amended**: 2026-06-07
+**Version**: 2.2.0 | **Ratified**: 2026-06-07 | **Last Amended**: 2026-06-07

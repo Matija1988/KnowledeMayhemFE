@@ -25,6 +25,16 @@ npm run build
 npm run audit
 ```
 
+Local API requests use the Vite dev proxy by default. For the backend shown in local logs,
+copy `.env.example` to `.env.local` or set:
+
+```powershell
+VITE_BACKEND_URL=http://localhost:5168
+```
+
+Leave `VITE_API_BASE_URL` unset during local development so the browser calls `/api/...`
+through the Vite proxy instead of making cross-origin requests directly.
+
 If Playwright browsers are not installed locally:
 
 ```powershell

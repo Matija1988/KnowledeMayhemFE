@@ -21,6 +21,8 @@ type RequestJsonOptions<TBody> = {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: TBody;
   retryOnNetworkError?: boolean;
+  headers?: Record<string, string>;
+  credentials?: RequestCredentials;
 };
 
 export async function requestJson<TResponse, TBody = unknown>(
@@ -30,7 +32,10 @@ export async function requestJson<TResponse, TBody = unknown>(
   const execute = () =>
     fetch(url, {
       method: options.method ?? "GET",
-      headers: options.body ? { "Content-Type": "application/json" } : undefined,
+      headers: options.body
+        ? { "Content-Type": "application/json", ...(options.headers ?? {}) }
+        : options.headers,
+      credentials: options.credentials,
       body: options.body ? JSON.stringify(options.body) : undefined,
     });
 

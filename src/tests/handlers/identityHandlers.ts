@@ -2,7 +2,7 @@ import { http, HttpResponse } from "msw";
 import { authProblem, loginResponse } from "../fixtures/authFixtures";
 
 export const identityHandlers = [
-  http.post("/api/identity/login", async ({ request }) => {
+  http.post("**/api/identity/login", async ({ request }) => {
     const body = (await request.json()) as { usernameOrEmail?: string; password?: string };
 
     if (!body.usernameOrEmail || !body.password) {

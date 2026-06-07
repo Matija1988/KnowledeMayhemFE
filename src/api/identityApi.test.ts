@@ -27,7 +27,7 @@ describe("identityApi", () => {
   });
 
   it("throws for rejected login requests", async () => {
-    server.use(http.post("/api/identity/login", () => HttpResponse.json({ title: "No" }, { status: 401 })));
+    server.use(http.post("**/api/identity/login", () => HttpResponse.json({ title: "No" }, { status: 401 })));
     await expect(login(validCredentials)).rejects.toBeInstanceOf(HttpError);
   });
 });
