@@ -1,0 +1,61 @@
+export type ProblemDetails = {
+  title?: string;
+  detail?: string;
+  status?: number;
+  traceId?: string;
+};
+
+export class HttpError extends Error {
+  readonly status: number;
+  readonly problem: ProblemDetails | null;
+
+  constructor(status: number, problem: ProblemDetails | null, message = "Request failed") {
+    super(message);
+    this.name = "HttpError";
+    this.status = status;
+    this.problem = problem;
+  }
+}
+
+type RequestJsonOptions<TBody> = {
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  body?: TBody;
+  retryOnNetworkError?: boolean;
+};
+
+export async function requestJson<TResponse, TBody = unknown>(
+  url: string,
+  options: RequestJsonOptions<TBody> = {},
+): Promise<TResponse> {
+  const execute = () =>
+    fetch(url, {
+      method: options.method ?? "GET",
+      headers: options.body ? { "Content-Type": "application/json" } : undefined,
+      body: options.body ? JSON.stringify(options.body) : undefined,
+    });
+
+  let response: Response;
+  try {
+    response = await execute();
+  } catch (error) {
+    if (options.retryOnNetworkError) {
+      response = await execute();
+    } else {
+      throw error;
+    }
+  }
+
+  if (!response.ok) {
+    throw new HttpError(response.status, await readProblem(response), response.statusText);
+  }
+
+  return (await response.json()) as TResponse;
+}
+
+async function readProblem(response: Response): Promise<ProblemDetails | null> {
+  try {
+    return (await response.json()) as ProblemDetails;
+  } catch {
+    return null;
+  }
+}

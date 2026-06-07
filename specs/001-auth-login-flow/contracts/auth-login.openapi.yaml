@@ -1,0 +1,90 @@
+openapi: 3.0.3
+info:
+  title: Knowledge Mayhem Identity Login Contract
+  version: 0.1.0
+  description: Contract consumed by the frontend authentication foundation for username/email login.
+paths:
+  /api/identity/login:
+    post:
+      summary: Authenticate with username or email and password
+      operationId: login
+      tags:
+        - Identity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              username:
+                value:
+                  usernameOrEmail: alice
+                  password: P@ssword123!
+      responses:
+        '200':
+          description: Login accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: Request was malformed or missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthProblem'
+        '401':
+          description: Credentials are invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthProblem'
+        '429':
+          description: Too many login attempts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthProblem'
+        '500':
+          description: Identity service unavailable or failed unexpectedly
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthProblem'
+components:
+  schemas:
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - usernameOrEmail
+        - password
+      properties:
+        usernameOrEmail:
+          type: string
+          minLength: 1
+        password:
+          type: string
+          minLength: 1
+    LoginResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - accessToken
+      properties:
+        accessToken:
+          type: string
+          minLength: 1
+    AuthProblem:
+      type: object
+      additionalProperties: true
+      properties:
+        title:
+          type: string
+        detail:
+          type: string
+        status:
+          type: integer
+        traceId:
+          type: string
