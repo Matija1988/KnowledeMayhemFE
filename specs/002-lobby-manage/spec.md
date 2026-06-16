@@ -8,6 +8,14 @@
 
 **Input**: User description: "Implement the authenticated frontend lobby experience where users can create a lobby, join by code, view lobby members, leave a lobby, cancel a lobby as host, and start a game when the lobby is valid. Backend lobby rules include authenticated access, unique join codes, max 4 players, min 2 players to start, host-only start/cancel, host transfer on leave, automatic close when empty, and realtime broadcasts for lobby changes."
 
+## Clarifications
+
+### Session 2026-06-16
+
+- Q: How should the frontend handle an authenticated user who already has another active lobby when they try to create or join? -> A: Show the existing active lobby and navigate the user to it.
+- Q: What should happen after the host successfully starts a valid lobby? -> A: Automatically navigate to the game session.
+- Q: What should happen after the host successfully cancels a lobby? -> A: Navigate back to lobby landing with cancellation feedback.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Create Lobby as Authenticated User (Priority: P1)
@@ -59,13 +67,13 @@ experience and prevents invalid sessions.
 
 **Independent Test**: A tester signs in as host, verifies start is disabled with fewer than
 two players, sees it enabled with two to four players in an open, unexpired lobby, starts the
-lobby, and is directed toward the game session.
+lobby, and is automatically taken to the game session.
 
 **Acceptance Scenarios**:
 
 1. **Given** the host is in an open lobby with fewer than two players, **When** they view actions, **Then** start is disabled with an understandable reason.
-2. **Given** the host is in an open, unexpired lobby with two to four players, **When** they start the lobby, **Then** the lobby enters started state and the user is moved toward the game session.
-3. **Given** the host cancels an open lobby, **When** cancellation succeeds, **Then** the lobby is shown as cancelled or the user returns to the lobby landing view with feedback.
+2. **Given** the host is in an open, unexpired lobby with two to four players, **When** they start the lobby, **Then** the lobby enters started state and the user is automatically taken to the game session.
+3. **Given** the host cancels an open lobby, **When** cancellation succeeds, **Then** the user returns to the lobby landing view with cancellation feedback.
 
 ---
 
@@ -85,7 +93,7 @@ announces meaningful changes.
 
 1. **Given** a participant is viewing a lobby, **When** another player joins or leaves, **Then** the player list and count update and the change is announced.
 2. **Given** the host changes, **When** the update is received, **Then** the host badge moves to the new host.
-3. **Given** the lobby starts, **When** the start update is received, **Then** the user is moved toward the game session or given a clear action to continue.
+3. **Given** the lobby starts, **When** the start update is received, **Then** the user is automatically taken to the game session or shown a clear recovery action if navigation fails.
 
 ### Edge Cases
 
@@ -96,12 +104,14 @@ announces meaningful changes.
 - A lobby is not found.
 - A lobby has already started, closed, cancelled, or expired.
 - A user is already in the same lobby or another active lobby.
+- The backend reports that the user already has an active lobby while creating or joining; the frontend shows that existing lobby and navigates the user to it.
 - A non-host attempts to start or cancel a lobby.
 - A host leaves and host ownership transfers.
 - The last player leaves and the lobby closes automatically.
 - A start request is pending while another event changes lobby status.
 - A realtime connection drops, reconnects, or receives duplicate/out-of-order updates.
-- The lobby is started but navigation to the game session fails.
+- The lobby is started but automatic navigation to the game session fails.
+- The lobby is cancelled while participants are viewing it.
 - The copy-code action is unavailable or denied by the browser.
 - Lobby controls are used with keyboard-only input and assistive technology.
 
@@ -116,6 +126,7 @@ announces meaningful changes.
 - **FR-005**: Users MUST be able to join an open lobby by code.
 - **FR-006**: Join codes MUST be trimmed and normalized to uppercase before submission.
 - **FR-007**: Empty join codes MUST show validation feedback and MUST NOT submit a join request.
+- **FR-007a**: When a create or join attempt reveals that the current user already has an active lobby, the system MUST show that lobby and navigate the user to its lobby room.
 - **FR-008**: The lobby room MUST display lobby code, status, player count, maximum players, player list, host indicator, expiration time, and connection status.
 - **FR-009**: Users MUST be able to copy the lobby code and receive success or failure feedback.
 - **FR-010**: The current user MUST be visually identified in the player list when identity data is available.
@@ -126,10 +137,10 @@ announces meaningful changes.
 - **FR-015**: After the current user leaves, the system MUST clear current lobby state and return them to the lobby landing view.
 - **FR-016**: If the lobby closes automatically after leaving, the system MUST show user-facing feedback.
 - **FR-017**: The host MUST be able to cancel an open lobby.
-- **FR-018**: After successful cancellation, the system MUST update lobby status and provide clear feedback or a return action.
+- **FR-018**: After successful cancellation, the system MUST update lobby status, navigate the current user back to the lobby landing view, and show cancellation feedback.
 - **FR-019**: The host MUST be able to start an open, unexpired lobby only when two to four players are present.
 - **FR-020**: Start MUST be disabled when fewer than two players are present, more than four players are present, the current user is not host, the lobby is not open, the lobby is expired, or a start request is pending.
-- **FR-021**: On successful start, the system MUST preserve the returned session handoff data and move the user toward the game session.
+- **FR-021**: On successful start, the system MUST preserve the returned session handoff data and automatically navigate the user to the game session.
 - **FR-022**: The frontend MUST display expiration time and treat expired lobbies as not startable while relying on backend responses as authoritative.
 - **FR-023**: Lobby state MUST update from authoritative API responses and realtime lobby events.
 - **FR-024**: Realtime lobby connection logic MUST be centralized and MUST NOT live inside presentational components.
@@ -177,7 +188,8 @@ announces meaningful changes.
 - Users already have authenticated frontend state from the authentication foundation.
 - The authenticated user identity includes or can derive a stable user id for host/current-player checks.
 - The backend remains authoritative for lobby validity, start eligibility, membership, host transfer, expiration, and closure.
-- The default lobby route is `/lobby`, lobby rooms use a lobby id route, and successful starts move users toward a game-session route.
+- The default lobby route is `/lobby`, lobby rooms use a lobby id route, and successful starts automatically navigate users to a game-session route.
 - Realtime lobby events may arrive after initial lobby details are loaded and must reconcile with the latest known lobby state.
 - Display names are not required unless already available from existing auth or user context.
 - Browser credentialed requests remain disabled by default.
+- Backend responses for active-lobby conflicts include enough information to identify or retrieve the existing active lobby.

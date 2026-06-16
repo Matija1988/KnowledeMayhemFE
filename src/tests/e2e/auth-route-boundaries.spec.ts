@@ -11,7 +11,7 @@ test("signed-in users visiting login are sent to lobby", async ({ page }) => {
   });
 
   await page.goto("/login");
-  await expect(page.getByRole("heading", { name: "Lobby" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Lobby", exact: true })).toBeVisible();
 });
 
 test("invalid saved sessions are cleared before protected content appears", async ({ page }) => {
@@ -20,6 +20,6 @@ test("invalid saved sessions are cleared before protected content appears", asyn
   });
 
   await page.goto("/lobby");
-  await expect(page.getByText("Authenticated lobby entry point.")).not.toBeVisible();
+  await expect(page.getByRole("heading", { name: "Lobby", exact: true })).not.toBeVisible();
   await expect(page.getByText("Please sign in again.")).toBeVisible();
 });

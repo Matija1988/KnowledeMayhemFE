@@ -11,6 +11,14 @@ function renderProtected(initialEntry = "/protected") {
       <Routes>
         <Route path="/login" element={<p>Login page</p>} />
         <Route
+          path="/lobby"
+          element={
+            <ProtectedRoute>
+              <p>Lobby content</p>
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/protected"
           element={
             <ProtectedRoute>
@@ -37,6 +45,13 @@ describe("ProtectedRoute", () => {
     renderProtected();
 
     expect(screen.getByText("Protected content")).toBeInTheDocument();
+  });
+
+  it("protects the lobby route", () => {
+    renderProtected("/lobby");
+
+    expect(screen.queryByText("Lobby content")).not.toBeInTheDocument();
+    expect(screen.getByText("Login page")).toBeInTheDocument();
   });
 
   it("shows a prompt for invalid saved sessions", async () => {

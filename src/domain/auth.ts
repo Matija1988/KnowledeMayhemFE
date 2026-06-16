@@ -21,7 +21,7 @@ export type AuthError = {
 
 export type LoadingState = {
   isLoading: boolean;
-  operation: "login" | null;
+  operation: "login" | "createLobby" | "joinLobby" | "readLobby" | "leaveLobby" | "cancelLobby" | "startLobby" | null;
 };
 
 export type ProtectedDestination = {
@@ -91,17 +91,40 @@ export function createInvalidSessionError(): AuthError {
 }
 
 export function isJwtExpired(accessToken: string, nowSeconds = Date.now() / 1000): boolean {
+  const parsed = parseJwtPayload(accessToken);
+  return typeof parsed?.exp === "number" && parsed.exp <= nowSeconds;
+}
+
+export function getUserIdFromJwt(accessToken: string): string | null {
+  const parsed = parseJwtPayload(accessToken);
+  if (!parsed) {
+    return null;
+  }
+
+  const candidates = [
+    parsed.sub,
+    parsed.userId,
+    parsed.uid,
+    parsed.nameid,
+    parsed["nameid"],
+    parsed["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"],
+  ];
+
+  const userId = candidates.find((value): value is string => typeof value === "string" && value.trim().length > 0);
+  return userId ? userId.trim() : null;
+}
+
+function parseJwtPayload(accessToken: string): Record<string, unknown> | null {
   const [, payload] = accessToken.split(".");
   if (!payload) {
-    return false;
+    return null;
   }
 
   try {
     const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
     const json = atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "="));
-    const parsed = JSON.parse(json) as { exp?: number };
-    return typeof parsed.exp === "number" && parsed.exp <= nowSeconds;
+    return JSON.parse(json) as Record<string, unknown>;
   } catch {
-    return false;
+    return null;
   }
 }

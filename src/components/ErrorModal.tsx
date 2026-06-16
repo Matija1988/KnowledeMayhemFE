@@ -1,8 +1,24 @@
 import { useErrorStore } from "../stores/errorStore";
+import { useEffect } from "react";
 
 export function ErrorModal() {
   const modal = useErrorStore((state) => state.modal);
   const clearModal = useErrorStore((state) => state.clearModal);
+
+  useEffect(() => {
+    if (!modal) {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        clearModal();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [clearModal, modal]);
 
   if (!modal) {
     return null;

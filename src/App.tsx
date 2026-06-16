@@ -3,15 +3,12 @@ import { ErrorModal } from "./components/ErrorModal";
 import { LoadingSpinner } from "./components/LoadingSpinner";
 import { ToastProvider } from "./components/ToastProvider";
 import { LoginPage } from "./features/auth/LoginPage";
+import { LobbyLandingPage } from "./features/lobby/LobbyLandingPage";
+import { LobbyRoomPage } from "./features/lobby/LobbyRoomPage";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 
-function LobbyPage() {
-  return (
-    <main className="lobby-page">
-      <h1>Lobby</h1>
-      <p>Authenticated lobby entry point.</p>
-    </main>
-  );
+function GameSessionPlaceholder() {
+  return <main className="lobby-page">Game session loading...</main>;
 }
 
 export function App() {
@@ -23,7 +20,23 @@ export function App() {
           path="/lobby"
           element={
             <ProtectedRoute>
-              <LobbyPage />
+              <LobbyLandingPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/lobby/:lobbyId"
+          element={
+            <ProtectedRoute>
+              <LobbyRoomPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/game/:sessionId"
+          element={
+            <ProtectedRoute>
+              <GameSessionPlaceholder />
             </ProtectedRoute>
           }
         />

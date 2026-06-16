@@ -25,6 +25,11 @@ type RequestJsonOptions<TBody> = {
   credentials?: RequestCredentials;
 };
 
+type AuthenticatedRequestJsonOptions<TBody> = Omit<RequestJsonOptions<TBody>, "headers" | "credentials"> & {
+  accessToken: string;
+  headers?: Record<string, string>;
+};
+
 export async function requestJson<TResponse, TBody = unknown>(
   url: string,
   options: RequestJsonOptions<TBody> = {},
@@ -55,6 +60,21 @@ export async function requestJson<TResponse, TBody = unknown>(
   }
 
   return (await response.json()) as TResponse;
+}
+
+export async function authenticatedRequestJson<TResponse, TBody = unknown>(
+  url: string,
+  options: AuthenticatedRequestJsonOptions<TBody>,
+): Promise<TResponse> {
+  return requestJson<TResponse, TBody>(url, {
+    ...options,
+    credentials: "omit",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${options.accessToken}`,
+      ...(options.headers ?? {}),
+    },
+  });
 }
 
 async function readProblem(response: Response): Promise<ProblemDetails | null> {

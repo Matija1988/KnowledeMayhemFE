@@ -1,0 +1,326 @@
+openapi: 3.0.3
+info:
+  title: Knowledge Mayhem Lobby API
+  version: 0.1.0
+  description: Frontend planning contract for authenticated lobby creation, joining, reading, leaving, cancellation, and start handoff.
+servers:
+  - url: '{apiBaseUrl}'
+    variables:
+      apiBaseUrl:
+        default: https://localhost:5001
+security:
+  - bearerAuth: []
+paths:
+  /api/lobbies/:
+    post:
+      summary: Create lobby
+      operationId: createLobby
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLobbyRequest'
+      responses:
+        '200':
+          description: Lobby created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lobby'
+        '400':
+          description: Invalid player limit or active lobby conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '401':
+          description: Authentication required
+        '409':
+          description: User already has an active lobby
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActiveLobbyConflict'
+  /api/lobbies/join:
+    post:
+      summary: Join lobby by code
+      operationId: joinLobby
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JoinLobbyRequest'
+      responses:
+        '200':
+          description: Lobby joined
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lobby'
+        '400':
+          description: Invalid code, lobby not joinable, or active lobby conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '401':
+          description: Authentication required
+        '404':
+          description: Lobby not found
+        '409':
+          description: Lobby full, already started/closed/cancelled/expired, already in lobby, or already in another active lobby
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ProblemDetails'
+                  - $ref: '#/components/schemas/ActiveLobbyConflict'
+  /api/lobbies/{lobbyId}:
+    get:
+      summary: Read lobby details
+      operationId: getLobby
+      parameters:
+        - $ref: '#/components/parameters/LobbyId'
+      responses:
+        '200':
+          description: Lobby details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lobby'
+        '401':
+          description: Authentication required
+        '403':
+          description: User does not have access to this lobby
+        '404':
+          description: Lobby not found
+  /api/lobbies/{lobbyId}/leave:
+    post:
+      summary: Leave lobby
+      operationId: leaveLobby
+      parameters:
+        - $ref: '#/components/parameters/LobbyId'
+      responses:
+        '200':
+          description: Leave result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaveLobbyResult'
+        '401':
+          description: Authentication required
+        '403':
+          description: User does not have access to this lobby
+        '404':
+          description: Lobby not found
+  /api/lobbies/{lobbyId}/cancel:
+    post:
+      summary: Cancel lobby
+      operationId: cancelLobby
+      parameters:
+        - $ref: '#/components/parameters/LobbyId'
+      responses:
+        '200':
+          description: Cancelled lobby result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CancelLobbyResult'
+        '401':
+          description: Authentication required
+        '403':
+          description: Host required
+        '404':
+          description: Lobby not found
+        '409':
+          description: Lobby cannot be cancelled in its current state
+  /api/lobbies/{lobbyId}/start:
+    post:
+      summary: Start lobby
+      operationId: startLobby
+      parameters:
+        - $ref: '#/components/parameters/LobbyId'
+      responses:
+        '200':
+          description: Game session handoff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StartLobbyResult'
+        '401':
+          description: Authentication required
+        '403':
+          description: Host required
+        '404':
+          description: Lobby not found
+        '409':
+          description: Lobby cannot be started because it is not open, is expired, or has an invalid player count
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    LobbyId:
+      name: lobbyId
+      in: path
+      required: true
+      schema:
+        type: string
+  schemas:
+    CreateLobbyRequest:
+      type: object
+      required:
+        - maxPlayers
+      properties:
+        maxPlayers:
+          type: integer
+          enum: [2, 3, 4]
+          default: 4
+    JoinLobbyRequest:
+      type: object
+      required:
+        - code
+      properties:
+        code:
+          type: string
+          minLength: 1
+          description: Trimmed and uppercased lobby code.
+    Lobby:
+      type: object
+      required:
+        - id
+        - code
+        - hostUserId
+        - status
+        - maxPlayers
+        - expiresAtUtc
+        - createdAtUtc
+        - startedAtUtc
+        - closedAtUtc
+        - players
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+        hostUserId:
+          type: string
+        status:
+          $ref: '#/components/schemas/LobbyStatus'
+        maxPlayers:
+          type: integer
+          enum: [2, 3, 4]
+        expiresAtUtc:
+          type: string
+          format: date-time
+        createdAtUtc:
+          type: string
+          format: date-time
+        startedAtUtc:
+          type: string
+          format: date-time
+          nullable: true
+        closedAtUtc:
+          type: string
+          format: date-time
+          nullable: true
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/LobbyPlayer'
+    LobbyStatus:
+      type: string
+      enum:
+        - Open
+        - Started
+        - Closed
+        - Cancelled
+    LobbyPlayer:
+      type: object
+      required:
+        - userId
+        - joinedAtUtc
+      properties:
+        userId:
+          type: string
+        joinedAtUtc:
+          type: string
+          format: date-time
+    InitialGameState:
+      type: object
+      required:
+        - lobbyId
+        - orderedPlayerIds
+        - createdAtUtc
+      properties:
+        lobbyId:
+          type: string
+        orderedPlayerIds:
+          type: array
+          items:
+            type: string
+        createdAtUtc:
+          type: string
+          format: date-time
+    StartLobbyResult:
+      type: object
+      required:
+        - sessionId
+        - initialState
+        - lobby
+      properties:
+        sessionId:
+          type: string
+        initialState:
+          $ref: '#/components/schemas/InitialGameState'
+        lobby:
+          $ref: '#/components/schemas/Lobby'
+    LeaveLobbyResult:
+      type: object
+      required:
+        - lobby
+        - closed
+      properties:
+        lobby:
+          allOf:
+            - $ref: '#/components/schemas/Lobby'
+          nullable: true
+        closed:
+          type: boolean
+        newHostUserId:
+          type: string
+          nullable: true
+    CancelLobbyResult:
+      type: object
+      required:
+        - lobby
+      properties:
+        lobby:
+          $ref: '#/components/schemas/Lobby'
+    ActiveLobbyConflict:
+      type: object
+      properties:
+        lobby:
+          allOf:
+            - $ref: '#/components/schemas/Lobby'
+          nullable: true
+        lobbyId:
+          type: string
+          nullable: true
+        message:
+          type: string
+    ProblemDetails:
+      type: object
+      properties:
+        title:
+          type: string
+        detail:
+          type: string
+        status:
+          type: integer
+        traceId:
+          type: string
