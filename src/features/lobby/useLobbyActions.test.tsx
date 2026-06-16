@@ -1,5 +1,5 @@
 import { renderHook, act } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { useAuthStore } from "../../stores/authStore";
 import { useLoadingStore } from "../../stores/loadingStore";
@@ -7,7 +7,19 @@ import { useLobbyStore } from "../../stores/lobbyStore";
 import { lobbyWithGuest } from "../../tests/fixtures/lobbyFixtures";
 import { useLobbyActions } from "./useLobbyActions";
 
-const wrapper = ({ children }: { children: React.ReactNode }) => <MemoryRouter>{children}</MemoryRouter>;
+let currentPath = "/";
+
+const wrapper = ({ children }: { children: React.ReactNode }) => (
+  <MemoryRouter>
+    <LocationProbe />
+    {children}
+  </MemoryRouter>
+);
+
+function LocationProbe() {
+  currentPath = useLocation().pathname;
+  return null;
+}
 
 describe("useLobbyActions", () => {
   it("creates a lobby and stores it", async () => {
@@ -65,6 +77,7 @@ describe("useLobbyActions", () => {
       await result.current.start("lobby-1");
     });
     expect(useLobbyStore.getState().lastStartResult?.sessionId).toBe("session-1");
+    expect(currentPath).toBe("/game/session-1");
 
     await act(async () => {
       await result.current.leave("lobby-1");

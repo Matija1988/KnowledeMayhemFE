@@ -1,0 +1,102 @@
+export type GameSessionStatus = "InProgress" | "Completed" | "Cancelled";
+
+export type TileType = "Normal" | "Blocked";
+
+export type GamePlayer = {
+  id: string;
+  gameSessionId: string;
+  userId: string;
+  playerOrder: number;
+  displayName: string | null;
+  isEliminated: boolean;
+  createdAtUtc: string;
+};
+
+export type BoardTile = {
+  id: string;
+  gameSessionId: string;
+  x: number;
+  y: number;
+  categoryId: string | null;
+  ownerPlayerId: string | null;
+  occupyingPieceId: string | null;
+  tileType: TileType;
+  createdAtUtc: string;
+};
+
+export type Piece = {
+  id: string;
+  gameSessionId: string;
+  ownerPlayerId: string;
+  currentTileId: string;
+  level: number;
+  isCaptured: boolean;
+  createdAtUtc: string;
+};
+
+export type TurnState = {
+  gameSessionId: string;
+  currentTurnPlayerId: string | null;
+  turnNumber: number;
+  status: string | null;
+};
+
+export type GameSession = {
+  id: string;
+  lobbyId: string;
+  status: GameSessionStatus;
+  boardSeed: string | number;
+  boardWidth: number;
+  boardHeight: number;
+  currentTurnPlayerId: string | null;
+  turnNumber: number;
+  startedAtUtc: string;
+  endedAtUtc: string | null;
+  winnerPlayerId: string | null;
+  createdAtUtc: string;
+  players: GamePlayer[];
+  tiles: BoardTile[];
+  pieces: Piece[];
+};
+
+export type MovePieceRequest = {
+  pieceId: string;
+  targetX: number;
+  targetY: number;
+};
+
+export type GameActionResult = {
+  session: GameSession;
+  turn: TurnState;
+};
+
+export type ConnectionState = {
+  status: "idle" | "connecting" | "connected" | "reconnecting" | "disconnected" | "error";
+  message: string | null;
+  lastUpdatedAtUtc: string | null;
+};
+
+export type GameOperation = "readGame" | "movePiece" | "reconnectGame";
+
+export type GameActionError = {
+  title: string;
+  message: string;
+  displayMode: "toast" | "modal";
+};
+
+export type BlockingGameError = {
+  title: string;
+  message: string;
+  reason:
+    | "malformedSnapshot"
+    | "completed"
+    | "cancelled"
+    | "unavailable"
+    | "unauthorized"
+    | "reconnectFailed";
+};
+
+export type BoardCoordinate = {
+  x: number;
+  y: number;
+};

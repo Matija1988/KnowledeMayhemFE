@@ -1,0 +1,387 @@
+openapi: 3.0.3
+info:
+  title: Knowledge Mayhem Game Session API
+  version: 0.1.0
+  description: Frontend planning contract for authenticated game session reads, turns, and movement.
+servers:
+  - url: '{apiBaseUrl}'
+    variables:
+      apiBaseUrl:
+        default: https://localhost:5001
+security:
+  - bearerAuth: []
+paths:
+  /api/game-sessions/from-lobby/{lobbyId}:
+    post:
+      summary: Create or read game session from a started lobby
+      operationId: createGameSessionFromLobby
+      parameters:
+        - $ref: '#/components/parameters/LobbyId'
+      responses:
+        '200':
+          description: Game action result with authoritative session and turn state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameActionResult'
+        '401':
+          description: Authentication required
+        '403':
+          description: User is not a participant
+        '404':
+          description: Lobby not found
+        '409':
+          description: Lobby is not started or cannot produce a game session
+  /api/game-sessions/{gameSessionId}:
+    get:
+      summary: Read full game session state
+      operationId: getGameSession
+      parameters:
+        - $ref: '#/components/parameters/GameSessionId'
+      responses:
+        '200':
+          description: Full authoritative game session state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameSession'
+        '401':
+          description: Authentication required
+        '403':
+          description: User is not a session participant
+        '404':
+          description: Game session not found
+  /api/game-sessions/{gameSessionId}/turn:
+    get:
+      summary: Read current turn state
+      operationId: getGameTurn
+      parameters:
+        - $ref: '#/components/parameters/GameSessionId'
+      responses:
+        '200':
+          description: Current turn state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TurnState'
+        '401':
+          description: Authentication required
+        '403':
+          description: User is not a session participant
+        '404':
+          description: Game session not found
+  /api/game-sessions/{gameSessionId}/moves:
+    post:
+      summary: Move one selected piece to a target coordinate
+      operationId: movePiece
+      parameters:
+        - $ref: '#/components/parameters/GameSessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MovePieceRequest'
+      responses:
+        '200':
+          description: Authoritative result after the move
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameActionResult'
+        '400':
+          description: Invalid move request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '401':
+          description: Authentication required
+        '403':
+          description: User is not allowed to move this piece
+        '404':
+          description: Game session, piece, or target tile not found
+        '409':
+          description: Move rejected because of turn, status, occupancy, blocked tile, or stale state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/game-sessions/{gameSessionId}/end-turn:
+    post:
+      summary: Explicit end turn endpoint, reserved for later frontend features
+      operationId: endTurn
+      parameters:
+        - $ref: '#/components/parameters/GameSessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EndTurnRequest'
+      responses:
+        '200':
+          description: Authoritative result after ending turn
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameActionResult'
+        '401':
+          description: Authentication required
+        '403':
+          description: User is not allowed to end this turn
+        '404':
+          description: Game session not found
+        '409':
+          description: Turn cannot be ended in current state
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    LobbyId:
+      name: lobbyId
+      in: path
+      required: true
+      schema:
+        type: string
+    GameSessionId:
+      name: gameSessionId
+      in: path
+      required: true
+      schema:
+        type: string
+  schemas:
+    GameSession:
+      type: object
+      required:
+        - id
+        - lobbyId
+        - status
+        - boardSeed
+        - boardWidth
+        - boardHeight
+        - currentTurnPlayerId
+        - turnNumber
+        - startedAtUtc
+        - endedAtUtc
+        - winnerPlayerId
+        - createdAtUtc
+        - players
+        - tiles
+        - pieces
+      properties:
+        id:
+          type: string
+        lobbyId:
+          type: string
+        status:
+          $ref: '#/components/schemas/GameSessionStatus'
+        boardSeed:
+          oneOf:
+            - type: string
+            - type: integer
+        boardWidth:
+          type: integer
+          minimum: 1
+        boardHeight:
+          type: integer
+          minimum: 1
+        currentTurnPlayerId:
+          type: string
+          nullable: true
+        turnNumber:
+          type: integer
+          minimum: 0
+        startedAtUtc:
+          type: string
+          format: date-time
+        endedAtUtc:
+          type: string
+          format: date-time
+          nullable: true
+        winnerPlayerId:
+          type: string
+          nullable: true
+        createdAtUtc:
+          type: string
+          format: date-time
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/GamePlayer'
+        tiles:
+          type: array
+          items:
+            $ref: '#/components/schemas/BoardTile'
+        pieces:
+          type: array
+          items:
+            $ref: '#/components/schemas/Piece'
+    GameSessionStatus:
+      type: string
+      enum:
+        - InProgress
+        - Completed
+        - Cancelled
+    GamePlayer:
+      type: object
+      required:
+        - id
+        - gameSessionId
+        - userId
+        - playerOrder
+        - displayName
+        - isEliminated
+        - createdAtUtc
+      properties:
+        id:
+          type: string
+        gameSessionId:
+          type: string
+        userId:
+          type: string
+        playerOrder:
+          type: integer
+        displayName:
+          type: string
+          nullable: true
+        isEliminated:
+          type: boolean
+        createdAtUtc:
+          type: string
+          format: date-time
+    BoardTile:
+      type: object
+      required:
+        - id
+        - gameSessionId
+        - x
+        - y
+        - categoryId
+        - ownerPlayerId
+        - occupyingPieceId
+        - tileType
+        - createdAtUtc
+      properties:
+        id:
+          type: string
+        gameSessionId:
+          type: string
+        x:
+          type: integer
+          minimum: 0
+        y:
+          type: integer
+          minimum: 0
+        categoryId:
+          type: string
+          nullable: true
+        ownerPlayerId:
+          type: string
+          nullable: true
+        occupyingPieceId:
+          type: string
+          nullable: true
+        tileType:
+          $ref: '#/components/schemas/TileType'
+        createdAtUtc:
+          type: string
+          format: date-time
+    TileType:
+      type: string
+      enum:
+        - Normal
+        - Blocked
+    Piece:
+      type: object
+      required:
+        - id
+        - gameSessionId
+        - ownerPlayerId
+        - currentTileId
+        - level
+        - isCaptured
+        - createdAtUtc
+      properties:
+        id:
+          type: string
+        gameSessionId:
+          type: string
+        ownerPlayerId:
+          type: string
+        currentTileId:
+          type: string
+        level:
+          type: integer
+          minimum: 1
+        isCaptured:
+          type: boolean
+        createdAtUtc:
+          type: string
+          format: date-time
+    MovePieceRequest:
+      type: object
+      required:
+        - pieceId
+        - targetX
+        - targetY
+      properties:
+        pieceId:
+          type: string
+        targetX:
+          type: integer
+          minimum: 0
+        targetY:
+          type: integer
+          minimum: 0
+    EndTurnRequest:
+      type: object
+      required:
+        - reason
+      properties:
+        reason:
+          type: string
+          enum:
+            - player-ended-turn
+    GameActionResult:
+      type: object
+      required:
+        - session
+        - turn
+      properties:
+        session:
+          $ref: '#/components/schemas/GameSession'
+        turn:
+          $ref: '#/components/schemas/TurnState'
+    TurnState:
+      type: object
+      required:
+        - gameSessionId
+        - currentTurnPlayerId
+        - turnNumber
+      properties:
+        gameSessionId:
+          type: string
+        currentTurnPlayerId:
+          type: string
+          nullable: true
+        turnNumber:
+          type: integer
+          minimum: 0
+        status:
+          type: string
+          nullable: true
+    ProblemDetails:
+      type: object
+      properties:
+        title:
+          type: string
+        detail:
+          type: string
+        status:
+          type: integer
+        traceId:
+          type: string

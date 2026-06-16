@@ -3,13 +3,10 @@ import { ErrorModal } from "./components/ErrorModal";
 import { LoadingSpinner } from "./components/LoadingSpinner";
 import { ToastProvider } from "./components/ToastProvider";
 import { LoginPage } from "./features/auth/LoginPage";
+import { GameSessionPage } from "./features/game/GameSessionPage";
 import { LobbyLandingPage } from "./features/lobby/LobbyLandingPage";
 import { LobbyRoomPage } from "./features/lobby/LobbyRoomPage";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
-
-function GameSessionPlaceholder() {
-  return <main className="lobby-page">Game session loading...</main>;
-}
 
 export function App() {
   return (
@@ -36,7 +33,7 @@ export function App() {
           path="/game/:sessionId"
           element={
             <ProtectedRoute>
-              <GameSessionPlaceholder />
+              <GameSessionPage />
             </ProtectedRoute>
           }
         />

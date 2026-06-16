@@ -21,7 +21,18 @@ export type AuthError = {
 
 export type LoadingState = {
   isLoading: boolean;
-  operation: "login" | "createLobby" | "joinLobby" | "readLobby" | "leaveLobby" | "cancelLobby" | "startLobby" | null;
+  operation:
+    | "login"
+    | "createLobby"
+    | "joinLobby"
+    | "readLobby"
+    | "leaveLobby"
+    | "cancelLobby"
+    | "startLobby"
+    | "readGame"
+    | "movePiece"
+    | "reconnectGame"
+    | null;
 };
 
 export type ProtectedDestination = {
