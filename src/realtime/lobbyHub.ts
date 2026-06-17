@@ -2,6 +2,7 @@ import * as signalR from "@microsoft/signalr";
 import { apiBaseUrl } from "../api/apiConfig";
 import {
   isHostChangedEvent,
+  isLobbyPlayerLeftEvent,
   isLobbyPlayerEvent,
   isLobbySnapshotPayload,
   lobbyEventNames,
@@ -13,6 +14,7 @@ import type { Lobby, StartLobbyResult } from "../domain/lobby/lobbyTypes";
 
 type HubLike = {
   on: (eventName: string, callback: (...args: unknown[]) => void) => void;
+  invoke?: (methodName: string, ...args: unknown[]) => Promise<unknown>;
   onreconnecting?: (callback: () => void) => void;
   onreconnected?: (callback: () => void) => void;
   onclose?: (callback: () => void) => void;
@@ -45,6 +47,14 @@ export function createLobbyHubConnection(accessToken: string, baseUrl = apiBaseU
     .build();
 }
 
+export async function joinLobbyHubGroup(connection: Pick<HubLike, "invoke">, lobbyId: string): Promise<void> {
+  if (!connection.invoke) {
+    return;
+  }
+
+  await connection.invoke("SubscribeLobby", { lobbyId });
+}
+
 export function registerLobbyHubHandlers(connection: HubLike, handlers: LobbyHubHandlers): void {
   connection.on(lobbyEventNames.snapshot, (payload) => handlers.onSnapshot(toLobbyEvent(payload as never)));
   connection.on(lobbyEventNames.playerJoined, (payload) => {
@@ -63,6 +73,10 @@ export function registerLobbyHubHandlers(connection: HubLike, handlers: LobbyHub
     }
     if (isLobbyPlayerEvent(payload)) {
       handlers.onPlayerLeftPatch(payload.lobbyId, payload.player.userId);
+      return;
+    }
+    if (isLobbyPlayerLeftEvent(payload)) {
+      handlers.onPlayerLeftPatch(payload.lobbyId, payload.leavingUserId);
     }
   });
   connection.on(lobbyEventNames.hostChanged, (payload) => {

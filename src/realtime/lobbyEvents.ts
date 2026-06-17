@@ -3,12 +3,12 @@ import type { InitialGameState, Lobby, LobbyPlayer, StartLobbyResult } from "../
 
 export const lobbyEventNames = {
   snapshot: "LobbySnapshot",
-  playerJoined: "PlayerJoined",
-  playerLeft: "PlayerLeft",
+  playerJoined: "LobbyPlayerJoinedEvent",
+  playerLeft: "LobbyPlayerLeftEvent",
   hostChanged: "HostChanged",
-  started: "LobbyStarted",
-  closed: "LobbyClosed",
-  cancelled: "LobbyCancelled",
+  started: "LobbyStartedEvent",
+  closed: "LobbyClosedEvent",
+  cancelled: "LobbyCancelledEvent",
 } as const;
 
 export type HostChangedEventDto = {
@@ -19,6 +19,11 @@ export type HostChangedEventDto = {
 export type LobbyPlayerEventDto = {
   lobbyId: string;
   player: LobbyPlayer;
+};
+
+export type LobbyPlayerLeftEventDto = {
+  lobbyId: string;
+  leavingUserId: string;
 };
 
 export type LobbyStartedEventDto = {
@@ -70,6 +75,15 @@ export function isLobbyPlayerEvent(payload: unknown): payload is LobbyPlayerEven
     payload !== null &&
     typeof (payload as LobbyPlayerEventDto).lobbyId === "string" &&
     typeof (payload as LobbyPlayerEventDto).player?.userId === "string"
+  );
+}
+
+export function isLobbyPlayerLeftEvent(payload: unknown): payload is LobbyPlayerLeftEventDto {
+  return (
+    typeof payload === "object" &&
+    payload !== null &&
+    typeof (payload as LobbyPlayerLeftEventDto).lobbyId === "string" &&
+    typeof (payload as LobbyPlayerLeftEventDto).leavingUserId === "string"
   );
 }
 

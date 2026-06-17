@@ -1,7 +1,9 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { http, HttpResponse } from "msw";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { server } from "../../tests/setup";
 import { lobbyWithGuest } from "../../tests/fixtures/lobbyFixtures";
 import { useAuthStore } from "../../stores/authStore";
 import { useLobbyStore } from "../../stores/lobbyStore";
@@ -11,11 +13,13 @@ import { LobbyRoomPage } from "./LobbyRoomPage";
 
 const lobbyHubMocks = vi.hoisted(() => ({
   createLobbyHubConnection: vi.fn(),
+  joinLobbyHubGroup: vi.fn(),
   registerLobbyHubHandlers: vi.fn(),
 }));
 
 vi.mock("../../realtime/lobbyHub", () => ({
   createLobbyHubConnection: lobbyHubMocks.createLobbyHubConnection,
+  joinLobbyHubGroup: lobbyHubMocks.joinLobbyHubGroup,
   registerLobbyHubHandlers: lobbyHubMocks.registerLobbyHubHandlers,
 }));
 
@@ -39,6 +43,8 @@ function accessTokenForUser(userId: string): string {
 describe("LobbyRoomPage", () => {
   beforeEach(() => {
     lobbyHubMocks.createLobbyHubConnection.mockReset();
+    lobbyHubMocks.joinLobbyHubGroup.mockReset();
+    lobbyHubMocks.joinLobbyHubGroup.mockResolvedValue(undefined);
     lobbyHubMocks.registerLobbyHubHandlers.mockReset();
   });
 
@@ -152,5 +158,57 @@ describe("LobbyRoomPage", () => {
     handlers.onStarted({ lobbyId: "lobby-1", sessionId: "session-1", initialState: null, lobby: null });
 
     expect(await screen.findByText("Game loaded")).toBeInTheDocument();
+  });
+
+  it("subscribes to the current lobby update group after connecting", async () => {
+    const connection = {
+      start: vi.fn().mockResolvedValue(undefined),
+      stop: vi.fn().mockResolvedValue(undefined),
+      on: vi.fn(),
+    };
+    lobbyHubMocks.createLobbyHubConnection.mockReturnValue(connection);
+
+    useAuthStore.getState().login(accessTokenForUser("user-1"));
+    useLobbyStore.getState().setCurrentLobby(lobbyWithGuest({ players: [{ userId: "user-1", joinedAtUtc: "now" }] }));
+
+    render(
+      <MemoryRouter initialEntries={["/lobby/lobby-1"]}>
+        <Routes>
+          <Route path="/lobby/:lobbyId" element={<LobbyRoomPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(lobbyHubMocks.joinLobbyHubGroup).toHaveBeenCalledWith(connection, "lobby-1"));
+  });
+
+  it("does not repeatedly refetch the lobby after a failed route read", async () => {
+    let readCount = 0;
+    server.use(
+      http.get("**/api/lobbies/lobby-1", () => {
+        readCount += 1;
+        return HttpResponse.json({ title: "Rate limited", status: 429 }, { status: 429 });
+      }),
+    );
+    lobbyHubMocks.createLobbyHubConnection.mockReturnValue({
+      start: vi.fn().mockResolvedValue(undefined),
+      stop: vi.fn().mockResolvedValue(undefined),
+      on: vi.fn(),
+    });
+
+    useAuthStore.getState().login(accessTokenForUser("user-1"));
+
+    render(
+      <MemoryRouter initialEntries={["/lobby/lobby-1"]}>
+        <Routes>
+          <Route path="/lobby/:lobbyId" element={<LobbyRoomPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(readCount).toBe(1));
+    await new Promise((resolve) => window.setTimeout(resolve, 25));
+
+    expect(readCount).toBe(1);
   });
 });

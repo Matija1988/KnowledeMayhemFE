@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Badge } from "../../components/ui/Badge";
 import { Card } from "../../components/ui/Card";
@@ -7,7 +7,7 @@ import { isLobbyExpired } from "../../domain/lobby/lobbyMappers";
 import { useAuthStore } from "../../stores/authStore";
 import { useErrorStore } from "../../stores/errorStore";
 import { useLobbyStore } from "../../stores/lobbyStore";
-import { createLobbyHubConnection, registerLobbyHubHandlers } from "../../realtime/lobbyHub";
+import { createLobbyHubConnection, joinLobbyHubGroup, registerLobbyHubHandlers } from "../../realtime/lobbyHub";
 import { LobbyActions } from "./LobbyActions";
 import { LobbyCodePanel } from "./LobbyCodePanel";
 import { LobbyPlayerList } from "./LobbyPlayerList";
@@ -21,6 +21,8 @@ export function LobbyRoomPage() {
   const lobby = useLobbyStore((state) => state.currentLobby);
   const connection = useLobbyStore((state) => state.connection);
   const liveMessage = useLobbyStore((state) => state.liveMessage);
+  const pendingOperation = useLobbyStore((state) => state.pendingOperation);
+  const requestedLobbyIdRef = useRef<string | null>(null);
   const { read } = useLobbyActions();
   const showError = useErrorStore((state) => state.showError);
   const setConnection = useLobbyStore((state) => state.setConnection);
@@ -35,18 +37,39 @@ export function LobbyRoomPage() {
   const applyLobbyCancelled = useLobbyStore((state) => state.applyLobbyCancelled);
 
   useEffect(() => {
-    if (lobbyId && lobby?.id !== lobbyId) {
+    if (lobby?.id === lobbyId) {
+      requestedLobbyIdRef.current = null;
+      return;
+    }
+
+    if (lobbyId && pendingOperation !== "readLobby" && requestedLobbyIdRef.current !== lobbyId) {
+      requestedLobbyIdRef.current = lobbyId;
       void read(lobbyId);
     }
-  }, [lobby?.id, lobbyId, read]);
+  }, [lobby?.id, lobbyId, pendingOperation, read]);
 
   useEffect(() => {
-    if (!accessToken) {
+    if (!accessToken || !lobbyId) {
       return;
     }
 
     let isActive = true;
     const connection = createLobbyHubConnection(accessToken);
+    const joinLobbyUpdates = async () => {
+      try {
+        await joinLobbyHubGroup(connection, lobbyId);
+      } catch {
+        if (isActive) {
+          setConnection({ status: "error", message: "Unable to subscribe to lobby updates." });
+          showError({
+            title: "Lobby updates unavailable",
+            message: "Unable to subscribe to this lobby's updates.",
+            displayMode: "toast",
+          });
+        }
+      }
+    };
+
     registerLobbyHubHandlers(connection, {
       onSnapshot: (nextLobby) => {
         if (isActive) {
@@ -103,6 +126,9 @@ export function LobbyRoomPage() {
       onConnectionStatus: (status) => {
         if (isActive) {
           setConnection({ status });
+          if (status === "connected") {
+            void joinLobbyUpdates();
+          }
         }
       },
     });
@@ -110,9 +136,10 @@ export function LobbyRoomPage() {
     setConnection({ status: "connecting" });
     void connection
       .start()
-      .then(() => {
+      .then(async () => {
         if (isActive) {
           setConnection({ status: "connected" });
+          await joinLobbyUpdates();
         }
       })
       .catch(() => {
@@ -141,6 +168,7 @@ export function LobbyRoomPage() {
     applyPlayerJoinedPatch,
     applyPlayerLeft,
     applyPlayerLeftPatch,
+    lobbyId,
     navigate,
     setConnection,
     showError,
