@@ -8,7 +8,7 @@ import {
   isCandidateTarget,
 } from "../../domain/game/gameMovement";
 import type { BoardCoordinate } from "../../domain/game/gameTypes";
-import { createGameHubConnection, registerGameHubHandlers } from "../../realtime/gameHub";
+import { createGameHubConnection, joinGameSessionHubGroup, registerGameHubHandlers } from "../../realtime/gameHub";
 import { useAuthStore } from "../../stores/authStore";
 import { useErrorStore } from "../../stores/errorStore";
 import { useGameStore } from "../../stores/gameStore";
@@ -33,6 +33,9 @@ export function useGameSession(sessionId: string | undefined) {
   const beginMove = useGameStore((state) => state.beginMove);
   const applyMoveResult = useGameStore((state) => state.applyMoveResult);
   const applyGameSnapshot = useGameStore((state) => state.applyGameSnapshot);
+  const applyMovePatch = useGameStore((state) => state.applyMovePatch);
+  const applyTileOwnershipPatch = useGameStore((state) => state.applyTileOwnershipPatch);
+  const applyTurnPatch = useGameStore((state) => state.applyTurnPatch);
   const requestSnapshotRefresh = useGameStore((state) => state.requestSnapshotRefresh);
   const setConnection = useGameStore((state) => state.setConnection);
 
@@ -74,6 +77,20 @@ export function useGameSession(sessionId: string | undefined) {
 
     let isActive = true;
     const connection = createGameHubConnection(accessToken);
+    const joinGameUpdates = async () => {
+      try {
+        await joinGameSessionHubGroup(connection, sessionId);
+      } catch {
+        if (isActive) {
+          setConnection({ status: "error", message: "Unable to subscribe to game updates." });
+          showError({
+            title: "Realtime unavailable",
+            message: "Unable to subscribe to this game's updates.",
+            displayMode: "toast",
+          });
+        }
+      }
+    };
     const refreshAuthoritativeSnapshot = (message = "Refreshing game state.") => {
       requestSnapshotRefresh(message);
       void loadSession();
@@ -93,6 +110,24 @@ export function useGameSession(sessionId: string | undefined) {
         }
         applyMoveResult(result.session, `Move completed. Turn ${result.session.turnNumber}.`);
       },
+      onMoveExecuted: (event) => {
+        if (!isActive || event.gameSessionId !== sessionId) {
+          return;
+        }
+        applyMovePatch(event.gameSessionId, event.pieceId, event.fromTileId, event.toTileId, event.turnNumber);
+      },
+      onTileOwnershipChanged: (event) => {
+        if (!isActive || event.gameSessionId !== sessionId) {
+          return;
+        }
+        applyTileOwnershipPatch(event.gameSessionId, event.tileId, event.ownerPlayerId);
+      },
+      onTurnAdvanced: (event) => {
+        if (!isActive || event.gameSessionId !== sessionId) {
+          return;
+        }
+        applyTurnPatch(event.gameSessionId, event.currentTurnPlayerId, event.turnNumber);
+      },
       onPatchNeedsRefresh: () => {
         if (!isActive) {
           return;
@@ -105,6 +140,7 @@ export function useGameSession(sessionId: string | undefined) {
         }
         if (status === "connected") {
           setConnection({ status: "connected", message: "Game updates connected." });
+          void joinGameUpdates();
           refreshAuthoritativeSnapshot("Reconnected. Refreshing game state.");
           return;
         }
@@ -119,9 +155,10 @@ export function useGameSession(sessionId: string | undefined) {
 
     void connection
       .start()
-      .then(() => {
+      .then(async () => {
         if (isActive) {
           setConnection({ status: "connected", message: "Game updates connected." });
+          await joinGameUpdates();
         }
       })
       .catch(() => {
@@ -142,7 +179,10 @@ export function useGameSession(sessionId: string | undefined) {
   }, [
     accessToken,
     applyGameSnapshot,
+    applyMovePatch,
     applyMoveResult,
+    applyTileOwnershipPatch,
+    applyTurnPatch,
     loadSession,
     requestSnapshotRefresh,
     sessionId,

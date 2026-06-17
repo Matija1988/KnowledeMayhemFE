@@ -2,20 +2,22 @@ import { mapGameActionResult, mapGameSession, type GameActionResultDto, type Gam
 import type { GameActionResult, GameSession } from "../domain/game/gameTypes";
 
 export const gameEventNames = {
-  sessionCreated: "GameSessionCreated",
-  started: "GameStarted",
-  moveExecuted: "GameMoveExecuted",
-  tileOwnershipChanged: "GameTileOwnershipChanged",
-  turnAdvanced: "GameTurnAdvanced",
-  completed: "GameCompleted",
-  cancelled: "GameCancelled",
+  sessionCreated: "GameSessionCreatedEvent",
+  started: "GameStartedEvent",
+  moveExecuted: "GameMoveExecutedEvent",
+  tileOwnershipChanged: "GameTileOwnershipChangedEvent",
+  turnAdvanced: "GameTurnAdvancedEvent",
+  completed: "GameCompletedEvent",
+  cancelled: "GameCancelledEvent",
 } as const;
 
 export type GameMoveExecutedEventDto = {
   gameSessionId: string;
+  actingPlayerId: string;
   pieceId: string;
-  targetX: number;
-  targetY: number;
+  fromTileId: string;
+  toTileId: string;
+  turnNumber: number;
   session?: GameSessionDto;
   turn?: GameActionResultDto["turn"];
 };
@@ -31,6 +33,7 @@ export type GameTurnAdvancedEventDto = {
   gameSessionId: string;
   currentTurnPlayerId: string | null;
   turnNumber: number;
+  reason?: string;
   session?: GameSessionDto;
   turn?: GameActionResultDto["turn"];
 };
@@ -57,8 +60,9 @@ export function isGameMoveExecutedEvent(payload: unknown): payload is GameMoveEx
     payload !== null &&
     typeof (payload as GameMoveExecutedEventDto).gameSessionId === "string" &&
     typeof (payload as GameMoveExecutedEventDto).pieceId === "string" &&
-    typeof (payload as GameMoveExecutedEventDto).targetX === "number" &&
-    typeof (payload as GameMoveExecutedEventDto).targetY === "number"
+    typeof (payload as GameMoveExecutedEventDto).fromTileId === "string" &&
+    typeof (payload as GameMoveExecutedEventDto).toTileId === "string" &&
+    typeof (payload as GameMoveExecutedEventDto).turnNumber === "number"
   );
 }
 

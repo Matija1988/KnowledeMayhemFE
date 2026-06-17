@@ -10,10 +10,14 @@ import {
   isGameTurnAdvancedEvent,
   toGameActionResultEvent,
   toGameSessionEvent,
+  type GameMoveExecutedEventDto,
+  type GameTileOwnershipChangedEventDto,
+  type GameTurnAdvancedEventDto,
 } from "./gameEvents";
 
 type HubLike = {
   on: (eventName: string, callback: (...args: unknown[]) => void) => void;
+  invoke?: (methodName: string, ...args: unknown[]) => Promise<unknown>;
   onreconnecting?: (callback: () => void) => void;
   onreconnected?: (callback: () => void) => void;
   onclose?: (callback: () => void) => void;
@@ -22,6 +26,9 @@ type HubLike = {
 export type GameHubHandlers = {
   onSession: (session: GameSession) => void;
   onActionResult: (result: GameActionResult) => void;
+  onMoveExecuted: (event: GameMoveExecutedEventDto) => void;
+  onTileOwnershipChanged: (event: GameTileOwnershipChangedEventDto) => void;
+  onTurnAdvanced: (event: GameTurnAdvancedEventDto) => void;
   onPatchNeedsRefresh: () => void;
   onConnectionStatus: (status: "connected" | "reconnecting" | "disconnected") => void;
 };
@@ -38,6 +45,14 @@ export function createGameHubConnection(accessToken: string, baseUrl = apiBaseUr
     .build();
 }
 
+export async function joinGameSessionHubGroup(connection: Pick<HubLike, "invoke">, gameSessionId: string): Promise<void> {
+  if (!connection.invoke) {
+    return;
+  }
+
+  await connection.invoke("SubscribeToGameSession", { gameSessionId });
+}
+
 export function registerGameHubHandlers(connection: HubLike, handlers: GameHubHandlers): void {
   const handlePayload = (payload: unknown) => {
     if (isGameActionResult(payload)) {
@@ -48,13 +63,27 @@ export function registerGameHubHandlers(connection: HubLike, handlers: GameHubHa
       handlers.onSession(toGameSessionEvent(payload));
       return;
     }
-    if (isGameMoveExecutedEvent(payload) || isGameTileOwnershipChangedEvent(payload) || isGameTurnAdvancedEvent(payload)) {
+    if (typeof payload === "object" && payload !== null && "session" in payload && isGameSession(payload.session)) {
+      handlers.onSession(toGameSessionEvent(payload.session));
+      return;
+    }
+    if (isGameMoveExecutedEvent(payload)) {
+      payload.session ? handlers.onSession(toGameSessionEvent(payload.session)) : handlers.onMoveExecuted(payload);
+      return;
+    }
+    if (isGameTileOwnershipChangedEvent(payload)) {
+      payload.session ? handlers.onSession(toGameSessionEvent(payload.session)) : handlers.onTileOwnershipChanged(payload);
+      return;
+    }
+    if (isGameTurnAdvancedEvent(payload)) {
       if (payload.session) {
         handlers.onSession(toGameSessionEvent(payload.session));
-      } else {
-        handlers.onPatchNeedsRefresh();
+        return;
       }
+      handlers.onTurnAdvanced(payload);
+      return;
     }
+    handlers.onPatchNeedsRefresh();
   };
 
   connection.on(gameEventNames.sessionCreated, handlePayload);

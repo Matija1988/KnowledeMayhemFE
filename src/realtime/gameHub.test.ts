@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { getGameHubUrl, registerGameHubHandlers } from "./gameHub";
+import { getGameHubUrl, joinGameSessionHubGroup, registerGameHubHandlers } from "./gameHub";
 import { gameActionResultFixture, gameSessionFixture } from "../tests/fixtures/gameFixtures";
 
 describe("gameHub", () => {
@@ -18,16 +18,34 @@ describe("gameHub", () => {
     const handlers = {
       onSession: vi.fn(),
       onActionResult: vi.fn(),
+      onMoveExecuted: vi.fn(),
+      onTileOwnershipChanged: vi.fn(),
+      onTurnAdvanced: vi.fn(),
       onPatchNeedsRefresh: vi.fn(),
       onConnectionStatus: vi.fn(),
     };
 
     registerGameHubHandlers(connection, handlers);
-    callbacks.get("GameStarted")?.(gameSessionFixture());
-    callbacks.get("GameMoveExecuted")?.(gameActionResultFixture());
+    callbacks.get("GameStartedEvent")?.({ session: gameSessionFixture() });
+    callbacks.get("GameMoveExecutedEvent")?.(gameActionResultFixture());
+    callbacks.get("GameTurnAdvancedEvent")?.({
+      gameSessionId: "session-1",
+      currentTurnPlayerId: "player-2",
+      turnNumber: 2,
+      reason: "Move",
+    });
 
     expect(handlers.onSession).toHaveBeenCalledWith(expect.objectContaining({ id: "session-1" }));
     expect(handlers.onActionResult).toHaveBeenCalledWith(expect.objectContaining({ turn: expect.objectContaining({ turnNumber: 2 }) }));
+    expect(handlers.onTurnAdvanced).toHaveBeenCalledWith(expect.objectContaining({ currentTurnPlayerId: "player-2" }));
     expect(connection.onreconnecting).toHaveBeenCalled();
+  });
+
+  it("subscribes to a game session update group", async () => {
+    const invoke = vi.fn().mockResolvedValue(undefined);
+
+    await joinGameSessionHubGroup({ invoke }, "session-1");
+
+    expect(invoke).toHaveBeenCalledWith("SubscribeToGameSession", { gameSessionId: "session-1" });
   });
 });

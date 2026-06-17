@@ -61,6 +61,25 @@ describe("gameStore", () => {
     expect(useGameStore.getState().session?.turnNumber).toBe(2);
   });
 
+  it("applies realtime move and turn patches without requiring a manual refresh", () => {
+    const session = gameSessionFixture();
+
+    act(() => {
+      useGameStore.getState().setSession(session);
+      useGameStore.getState().selectPiece("piece-1", [{ x: 1, y: 0 }]);
+      useGameStore.getState().beginMove("piece-1", { x: 1, y: 0 });
+      useGameStore.getState().applyMovePatch("session-1", "piece-1", "tile-0-0", "tile-1-0", 2);
+      useGameStore.getState().applyTurnPatch("session-1", "player-2", 2);
+    });
+
+    expect(useGameStore.getState().piecesById["piece-1"].currentTileId).toBe("tile-1-0");
+    expect(useGameStore.getState().tilesById["tile-0-0"].occupyingPieceId).toBeNull();
+    expect(useGameStore.getState().tilesById["tile-1-0"].occupyingPieceId).toBe("piece-1");
+    expect(useGameStore.getState().session?.currentTurnPlayerId).toBe("player-2");
+    expect(selectIsCurrentTurn(useGameStore.getState().session, "user-2")).toBe(true);
+    expect(useGameStore.getState().pendingOperation).toBeNull();
+  });
+
   it("applies realtime snapshots and patch refresh requests", () => {
     const session = gameSessionFixture();
 

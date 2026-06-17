@@ -16,8 +16,17 @@ describe("gameEvents", () => {
   });
 
   it("guards patch event payloads", () => {
-    expect(gameEventNames.moveExecuted).toBe("GameMoveExecuted");
-    expect(isGameMoveExecutedEvent({ gameSessionId: "session-1", pieceId: "piece-1", targetX: 1, targetY: 0 })).toBe(true);
+    expect(gameEventNames.moveExecuted).toBe("GameMoveExecutedEvent");
+    expect(
+      isGameMoveExecutedEvent({
+        gameSessionId: "session-1",
+        actingPlayerId: "player-1",
+        pieceId: "piece-1",
+        fromTileId: "tile-0-0",
+        toTileId: "tile-1-0",
+        turnNumber: 2,
+      }),
+    ).toBe(true);
     expect(isGameTileOwnershipChangedEvent({ gameSessionId: "session-1", tileId: "tile-1-0", ownerPlayerId: null })).toBe(true);
     expect(isGameTurnAdvancedEvent({ gameSessionId: "session-1", currentTurnPlayerId: "player-2", turnNumber: 2 })).toBe(true);
   });

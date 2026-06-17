@@ -36,6 +36,9 @@ type GameStore = {
   beginMove: (pieceId: string, target: BoardCoordinate) => void;
   applyMoveResult: (session: GameSession, message?: string) => void;
   applyGameSnapshot: (session: GameSession, message?: string) => void;
+  applyMovePatch: (gameSessionId: string, pieceId: string, fromTileId: string, toTileId: string, turnNumber: number) => void;
+  applyTileOwnershipPatch: (gameSessionId: string, tileId: string, ownerPlayerId: string | null) => void;
+  applyTurnPatch: (gameSessionId: string, currentTurnPlayerId: string | null, turnNumber: number) => void;
   requestSnapshotRefresh: (message?: string) => void;
   resetGame: () => void;
 };
@@ -107,6 +110,71 @@ export const useGameStore = create<GameStore>((set) => ({
       pendingMove: null,
       blockingError: blockingErrorFromStatus(session.status),
       liveMessage: message,
+    }),
+  applyMovePatch: (gameSessionId, pieceId, fromTileId, toTileId, turnNumber) =>
+    set((state) => {
+      if (!state.session || state.session.id !== gameSessionId) {
+        return {};
+      }
+
+      const pieces = state.session.pieces.map((piece) =>
+        piece.id === pieceId ? { ...piece, currentTileId: toTileId } : piece,
+      );
+      const tiles = state.session.tiles.map((tile) => {
+        if (tile.id === fromTileId) {
+          return { ...tile, occupyingPieceId: null };
+        }
+        if (tile.id === toTileId) {
+          return { ...tile, occupyingPieceId: pieceId };
+        }
+        return tile;
+      });
+      const session = { ...state.session, pieces, tiles, turnNumber };
+
+      return {
+        session,
+        ...normalizeSession(session),
+        selectedPieceId: null,
+        candidateTargets: [],
+        pendingOperation: null,
+        pendingMove: null,
+        liveMessage: `Move completed. Turn ${turnNumber}.`,
+      };
+    }),
+  applyTileOwnershipPatch: (gameSessionId, tileId, ownerPlayerId) =>
+    set((state) => {
+      if (!state.session || state.session.id !== gameSessionId) {
+        return {};
+      }
+
+      const session = {
+        ...state.session,
+        tiles: state.session.tiles.map((tile) => (tile.id === tileId ? { ...tile, ownerPlayerId } : tile)),
+      };
+
+      return {
+        session,
+        ...normalizeSession(session),
+        liveMessage: "Tile ownership updated.",
+      };
+    }),
+  applyTurnPatch: (gameSessionId, currentTurnPlayerId, turnNumber) =>
+    set((state) => {
+      if (!state.session || state.session.id !== gameSessionId) {
+        return {};
+      }
+
+      const session = { ...state.session, currentTurnPlayerId, turnNumber };
+
+      return {
+        session,
+        ...normalizeSession(session),
+        selectedPieceId: null,
+        candidateTargets: [],
+        pendingOperation: null,
+        pendingMove: null,
+        liveMessage: `Turn ${turnNumber}.`,
+      };
     }),
   requestSnapshotRefresh: (message = "Refreshing game state.") =>
     set({
