@@ -113,12 +113,12 @@ export function getUserIdFromJwt(accessToken: string): string | null {
   }
 
   const candidates = [
-    parsed.sub,
     parsed.userId,
     parsed.uid,
     parsed.nameid,
     parsed["nameid"],
     parsed["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"],
+    parsed.sub,
   ];
 
   const userId = candidates.find((value): value is string => typeof value === "string" && value.trim().length > 0);

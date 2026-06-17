@@ -12,18 +12,44 @@ import type {
 const gameSessionStatuses = new Set<GameSessionStatus>(["InProgress", "Completed", "Cancelled"]);
 const tileTypes = new Set<TileType>(["Normal", "Blocked"]);
 
-export type GamePlayerDto = GamePlayer;
-export type BoardTileDto = BoardTile;
-export type PieceDto = Piece;
-export type TurnStateDto = TurnState;
-export type GameSessionDto = GameSession;
+export type GamePlayerDto = Omit<GamePlayer, "id" | "gameSessionId" | "createdAtUtc"> & {
+  id?: string;
+  playerId?: string;
+  gameSessionId?: string;
+  createdAtUtc?: string;
+};
+export type BoardTileDto = Omit<BoardTile, "id" | "gameSessionId" | "createdAtUtc"> & {
+  id?: string;
+  tileId?: string;
+  gameSessionId?: string;
+  createdAtUtc?: string;
+};
+export type PieceDto = Omit<Piece, "id" | "gameSessionId" | "createdAtUtc"> & {
+  id?: string;
+  pieceId?: string;
+  gameSessionId?: string;
+  createdAtUtc?: string;
+};
+export type TurnStateDto = Omit<TurnState, "gameSessionId"> & {
+  gameSessionId?: string;
+  sessionId?: string;
+};
+export type GameSessionDto = Omit<GameSession, "id" | "players" | "tiles" | "pieces" | "createdAtUtc"> & {
+  id?: string;
+  sessionId?: string;
+  createdAtUtc?: string;
+  players: GamePlayerDto[];
+  tiles: BoardTileDto[];
+  pieces: PieceDto[];
+};
 export type GameActionResultDto = {
   session: GameSessionDto;
   turn: TurnStateDto;
 };
 
 export function mapGameSession(dto: GameSessionDto): GameSession {
-  if (!dto.id || !dto.lobbyId) {
+  const sessionId = dto.id ?? dto.sessionId;
+  if (!sessionId || !dto.lobbyId) {
     throw new Error("Game session response is missing identity fields.");
   }
   if (!gameSessionStatuses.has(dto.status)) {
@@ -33,12 +59,12 @@ export function mapGameSession(dto: GameSessionDto): GameSession {
     throw new Error("Game session response has invalid board dimensions.");
   }
 
-  const players = (dto.players ?? []).map(mapGamePlayer);
-  const tiles = (dto.tiles ?? []).map(mapBoardTile);
-  const pieces = (dto.pieces ?? []).map(mapPiece);
+  const players = (dto.players ?? []).map((player) => mapGamePlayer(player, sessionId));
+  const tiles = (dto.tiles ?? []).map((tile) => mapBoardTile(tile, sessionId));
+  const pieces = (dto.pieces ?? []).map((piece) => mapPiece(piece, sessionId));
 
   const session: GameSession = {
-    id: dto.id,
+    id: sessionId,
     lobbyId: dto.lobbyId,
     status: dto.status,
     boardSeed: dto.boardSeed,
@@ -49,7 +75,7 @@ export function mapGameSession(dto: GameSessionDto): GameSession {
     startedAtUtc: dto.startedAtUtc,
     endedAtUtc: dto.endedAtUtc ?? null,
     winnerPlayerId: dto.winnerPlayerId ?? null,
-    createdAtUtc: dto.createdAtUtc,
+    createdAtUtc: dto.createdAtUtc ?? dto.startedAtUtc,
     players,
     tiles,
     pieces,
@@ -59,62 +85,69 @@ export function mapGameSession(dto: GameSessionDto): GameSession {
   return session;
 }
 
-export function mapGamePlayer(dto: GamePlayerDto): GamePlayer {
-  if (!dto.id || !dto.gameSessionId || !dto.userId) {
+export function mapGamePlayer(dto: GamePlayerDto, fallbackGameSessionId?: string): GamePlayer {
+  const playerId = dto.id ?? dto.playerId;
+  const gameSessionId = dto.gameSessionId ?? fallbackGameSessionId;
+  if (!playerId || !gameSessionId || !dto.userId) {
     throw new Error("Game player response is missing required fields.");
   }
   return {
-    id: dto.id,
-    gameSessionId: dto.gameSessionId,
+    id: playerId,
+    gameSessionId,
     userId: dto.userId,
     playerOrder: dto.playerOrder,
     displayName: dto.displayName ?? null,
     isEliminated: Boolean(dto.isEliminated),
-    createdAtUtc: dto.createdAtUtc,
+    createdAtUtc: dto.createdAtUtc ?? "",
   };
 }
 
-export function mapBoardTile(dto: BoardTileDto): BoardTile {
-  if (!dto.id || !dto.gameSessionId) {
+export function mapBoardTile(dto: BoardTileDto, fallbackGameSessionId?: string): BoardTile {
+  const tileId = dto.id ?? dto.tileId;
+  const gameSessionId = dto.gameSessionId ?? fallbackGameSessionId;
+  if (!tileId || !gameSessionId) {
     throw new Error("Board tile response is missing required fields.");
   }
   if (!tileTypes.has(dto.tileType)) {
     throw new Error(`Unsupported tile type: ${String(dto.tileType)}`);
   }
   return {
-    id: dto.id,
-    gameSessionId: dto.gameSessionId,
+    id: tileId,
+    gameSessionId,
     x: dto.x,
     y: dto.y,
     categoryId: dto.categoryId ?? null,
     ownerPlayerId: dto.ownerPlayerId ?? null,
     occupyingPieceId: dto.occupyingPieceId ?? null,
     tileType: dto.tileType,
-    createdAtUtc: dto.createdAtUtc,
+    createdAtUtc: dto.createdAtUtc ?? "",
   };
 }
 
-export function mapPiece(dto: PieceDto): Piece {
-  if (!dto.id || !dto.gameSessionId || !dto.ownerPlayerId || !dto.currentTileId) {
+export function mapPiece(dto: PieceDto, fallbackGameSessionId?: string): Piece {
+  const pieceId = dto.id ?? dto.pieceId;
+  const gameSessionId = dto.gameSessionId ?? fallbackGameSessionId;
+  if (!pieceId || !gameSessionId || !dto.ownerPlayerId || !dto.currentTileId) {
     throw new Error("Piece response is missing required fields.");
   }
   return {
-    id: dto.id,
-    gameSessionId: dto.gameSessionId,
+    id: pieceId,
+    gameSessionId,
     ownerPlayerId: dto.ownerPlayerId,
     currentTileId: dto.currentTileId,
     level: dto.level,
     isCaptured: Boolean(dto.isCaptured),
-    createdAtUtc: dto.createdAtUtc,
+    createdAtUtc: dto.createdAtUtc ?? "",
   };
 }
 
 export function mapTurnState(dto: TurnStateDto): TurnState {
-  if (!dto.gameSessionId) {
+  const gameSessionId = dto.gameSessionId ?? dto.sessionId;
+  if (!gameSessionId) {
     throw new Error("Turn response is missing gameSessionId.");
   }
   return {
-    gameSessionId: dto.gameSessionId,
+    gameSessionId,
     currentTurnPlayerId: dto.currentTurnPlayerId ?? null,
     turnNumber: dto.turnNumber,
     status: dto.status ?? null,

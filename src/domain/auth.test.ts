@@ -35,6 +35,21 @@ describe("auth domain", () => {
     expect(getUserIdFromJwt("opaque-token")).toBeNull();
   });
 
+  it("prefers explicit user id claims over subject display claims", () => {
+    const payload = btoa(
+      JSON.stringify({
+        sub: "player2@example.test",
+        "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier":
+          "3865bd26-00ce-4da1-abbf-e6c49a4f8782",
+      }),
+    )
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+
+    expect(getUserIdFromJwt(`header.${payload}.signature`)).toBe("3865bd26-00ce-4da1-abbf-e6c49a4f8782");
+  });
+
   it("creates logged-out sessions with invalid reasons", () => {
     expect(createLoggedOutSession("invalid-saved-session")).toEqual({
       accessToken: null,

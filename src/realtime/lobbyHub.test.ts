@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { lobbyFixture, startLobbyResultFixture } from "../tests/fixtures/lobbyFixtures";
+import { lobbyFixture } from "../tests/fixtures/lobbyFixtures";
 import { getLobbyHubUrl, registerLobbyHubHandlers, type LobbyHubHandlers } from "./lobbyHub";
 
 describe("lobbyHub", () => {
@@ -12,7 +12,9 @@ describe("lobbyHub", () => {
     const handlers: LobbyHubHandlers = {
       onSnapshot: vi.fn(),
       onPlayerJoined: vi.fn(),
+      onPlayerJoinedPatch: vi.fn(),
       onPlayerLeft: vi.fn(),
+      onPlayerLeftPatch: vi.fn(),
       onHostChanged: vi.fn(),
       onStarted: vi.fn(),
       onClosed: vi.fn(),
@@ -22,10 +24,12 @@ describe("lobbyHub", () => {
 
     registerLobbyHubHandlers({ on: (event, callback) => callbacks.set(event, callback) }, handlers);
     callbacks.get("LobbySnapshot")?.(lobbyFixture());
+    callbacks.get("PlayerJoined")?.({ lobbyId: "lobby-1", player: { userId: "user-2", joinedAtUtc: "now" } });
     callbacks.get("HostChanged")?.({ lobbyId: "lobby-1", hostUserId: "user-2" });
-    callbacks.get("LobbyStarted")?.(startLobbyResultFixture());
+    callbacks.get("LobbyStarted")?.({ lobbyId: "lobby-1", sessionId: "session-1" });
 
     expect(handlers.onSnapshot).toHaveBeenCalledWith(expect.objectContaining({ id: "lobby-1" }));
+    expect(handlers.onPlayerJoinedPatch).toHaveBeenCalledWith("lobby-1", "user-2", "now");
     expect(handlers.onHostChanged).toHaveBeenCalledWith("user-2");
     expect(handlers.onStarted).toHaveBeenCalledWith(expect.objectContaining({ sessionId: "session-1" }));
   });

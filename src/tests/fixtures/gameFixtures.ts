@@ -1,10 +1,10 @@
-import type { BoardTileDto, GameActionResultDto, GameSessionDto } from "../../domain/game/gameMappers";
+import type { BoardTile, GameActionResult, GameSession } from "../../domain/game/gameTypes";
 
 const now = "2026-06-16T10:00:00.000Z";
 
-type GameFixtureOverrides = Partial<GameSessionDto>;
+type GameFixtureOverrides = Partial<GameSession>;
 
-export function gameSessionFixture(overrides: GameFixtureOverrides = {}): GameSessionDto {
+export function gameSessionFixture(overrides: GameFixtureOverrides = {}): GameSession {
   const sessionId = overrides.id ?? "session-1";
   const tiles = overrides.tiles ?? createTiles(sessionId);
   const pieces =
@@ -77,7 +77,7 @@ export function gameActionResultFixture({
   pieceId?: string;
   targetX?: number;
   targetY?: number;
-} = {}): GameActionResultDto {
+} = {}): GameActionResult {
   const session = gameSessionFixture();
   const targetTileId = `tile-${targetX}-${targetY}`;
 
@@ -103,13 +103,13 @@ export function gameActionResultFixture({
   };
 }
 
-export function malformedGameSessionFixture(): GameSessionDto {
+export function malformedGameSessionFixture(): GameSession {
   const session = gameSessionFixture();
   return { ...session, tiles: session.tiles.slice(1) };
 }
 
-function createTiles(gameSessionId: string): BoardTileDto[] {
-  const tiles: BoardTileDto[] = [];
+function createTiles(gameSessionId: string): BoardTile[] {
+  const tiles: BoardTile[] = [];
   for (let y = 0; y < 2; y += 1) {
     for (let x = 0; x < 3; x += 1) {
       const id = `tile-${x}-${y}`;

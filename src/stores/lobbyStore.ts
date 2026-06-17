@@ -13,7 +13,9 @@ type LobbyStore = {
   endOperation: () => void;
   setConnection: (connection: Partial<ConnectionState>) => void;
   applyPlayerJoined: (lobby: Lobby, userId?: string) => void;
+  applyPlayerJoinedPatch: (lobbyId: string, userId: string, joinedAtUtc: string) => void;
   applyPlayerLeft: (lobby: Lobby, userId?: string) => void;
+  applyPlayerLeftPatch: (lobbyId: string, userId: string) => void;
   applyHostChanged: (hostUserId: string) => void;
   applyLobbyStarted: (result: StartLobbyResult) => void;
   applyLobbySnapshot: (lobby: Lobby) => void;
@@ -47,8 +49,37 @@ export const useLobbyStore = create<LobbyStore>((set) => ({
     })),
   applyPlayerJoined: (lobby, userId) =>
     set({ currentLobby: lobby, liveMessage: userId ? `${userId} joined the lobby.` : "A player joined the lobby." }),
+  applyPlayerJoinedPatch: (lobbyId, userId, joinedAtUtc) =>
+    set((state) => {
+      if (!state.currentLobby || state.currentLobby.id !== lobbyId) {
+        return {};
+      }
+      const alreadyJoined = state.currentLobby.players.some((player) => player.userId === userId);
+      return {
+        currentLobby: alreadyJoined
+          ? state.currentLobby
+          : {
+              ...state.currentLobby,
+              players: [...state.currentLobby.players, { userId, joinedAtUtc }],
+            },
+        liveMessage: `${userId} joined the lobby.`,
+      };
+    }),
   applyPlayerLeft: (lobby, userId) =>
     set({ currentLobby: lobby, liveMessage: userId ? `${userId} left the lobby.` : "A player left the lobby." }),
+  applyPlayerLeftPatch: (lobbyId, userId) =>
+    set((state) => {
+      if (!state.currentLobby || state.currentLobby.id !== lobbyId) {
+        return {};
+      }
+      return {
+        currentLobby: {
+          ...state.currentLobby,
+          players: state.currentLobby.players.filter((player) => player.userId !== userId),
+        },
+        liveMessage: `${userId} left the lobby.`,
+      };
+    }),
   applyHostChanged: (hostUserId) =>
     set((state) => ({
       currentLobby: state.currentLobby ? { ...state.currentLobby, hostUserId } : null,

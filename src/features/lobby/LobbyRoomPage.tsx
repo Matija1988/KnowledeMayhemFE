@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Badge } from "../../components/ui/Badge";
 import { Card } from "../../components/ui/Card";
 import { getUserIdFromJwt } from "../../domain/auth";
@@ -15,6 +15,7 @@ import { useLobbyActions } from "./useLobbyActions";
 
 export function LobbyRoomPage() {
   const { lobbyId } = useParams();
+  const navigate = useNavigate();
   const accessToken = useAuthStore((state) => state.accessToken);
   const currentUserId = accessToken ? getUserIdFromJwt(accessToken) : null;
   const lobby = useLobbyStore((state) => state.currentLobby);
@@ -25,7 +26,9 @@ export function LobbyRoomPage() {
   const setConnection = useLobbyStore((state) => state.setConnection);
   const applyLobbySnapshot = useLobbyStore((state) => state.applyLobbySnapshot);
   const applyPlayerJoined = useLobbyStore((state) => state.applyPlayerJoined);
+  const applyPlayerJoinedPatch = useLobbyStore((state) => state.applyPlayerJoinedPatch);
   const applyPlayerLeft = useLobbyStore((state) => state.applyPlayerLeft);
+  const applyPlayerLeftPatch = useLobbyStore((state) => state.applyPlayerLeftPatch);
   const applyHostChanged = useLobbyStore((state) => state.applyHostChanged);
   const applyLobbyStarted = useLobbyStore((state) => state.applyLobbyStarted);
   const applyLobbyClosed = useLobbyStore((state) => state.applyLobbyClosed);
@@ -42,32 +45,89 @@ export function LobbyRoomPage() {
       return;
     }
 
+    let isActive = true;
     const connection = createLobbyHubConnection(accessToken);
     registerLobbyHubHandlers(connection, {
-      onSnapshot: applyLobbySnapshot,
-      onPlayerJoined: (nextLobby) => applyPlayerJoined(nextLobby),
-      onPlayerLeft: (nextLobby) => applyPlayerLeft(nextLobby),
-      onHostChanged: applyHostChanged,
-      onStarted: applyLobbyStarted,
-      onClosed: applyLobbyClosed,
-      onCancelled: applyLobbyCancelled,
-      onConnectionStatus: (status) => setConnection({ status }),
+      onSnapshot: (nextLobby) => {
+        if (isActive) {
+          applyLobbySnapshot(nextLobby);
+        }
+      },
+      onPlayerJoined: (nextLobby) => {
+        if (isActive) {
+          applyPlayerJoined(nextLobby);
+        }
+      },
+      onPlayerJoinedPatch: (nextLobbyId, userId, joinedAtUtc) => {
+        if (isActive) {
+          applyPlayerJoinedPatch(nextLobbyId, userId, joinedAtUtc);
+        }
+      },
+      onPlayerLeft: (nextLobby) => {
+        if (isActive) {
+          applyPlayerLeft(nextLobby);
+        }
+      },
+      onPlayerLeftPatch: (nextLobbyId, userId) => {
+        if (isActive) {
+          applyPlayerLeftPatch(nextLobbyId, userId);
+        }
+      },
+      onHostChanged: (hostUserId) => {
+        if (isActive) {
+          applyHostChanged(hostUserId);
+        }
+      },
+      onStarted: (result) => {
+        if (isActive) {
+          if (result.lobby && result.initialState) {
+            applyLobbyStarted({
+              sessionId: result.sessionId,
+              initialState: result.initialState,
+              lobby: result.lobby,
+            });
+          }
+          navigate(`/game/${result.sessionId}`);
+        }
+      },
+      onClosed: (nextLobby) => {
+        if (isActive) {
+          applyLobbyClosed(nextLobby);
+        }
+      },
+      onCancelled: (nextLobby) => {
+        if (isActive) {
+          applyLobbyCancelled(nextLobby);
+        }
+      },
+      onConnectionStatus: (status) => {
+        if (isActive) {
+          setConnection({ status });
+        }
+      },
     });
 
     setConnection({ status: "connecting" });
     void connection
       .start()
-      .then(() => setConnection({ status: "connected" }))
+      .then(() => {
+        if (isActive) {
+          setConnection({ status: "connected" });
+        }
+      })
       .catch(() => {
-        setConnection({ status: "error", message: "Unable to connect to lobby updates." });
-        showError({
-          title: "Lobby updates unavailable",
-          message: "Unable to connect to lobby updates.",
-          displayMode: "toast",
-        });
+        if (isActive) {
+          setConnection({ status: "error", message: "Unable to connect to lobby updates." });
+          showError({
+            title: "Lobby updates unavailable",
+            message: "Unable to connect to lobby updates.",
+            displayMode: "toast",
+          });
+        }
       });
 
     return () => {
+      isActive = false;
       void connection.stop();
     };
   }, [
@@ -78,7 +138,10 @@ export function LobbyRoomPage() {
     applyLobbySnapshot,
     applyLobbyStarted,
     applyPlayerJoined,
+    applyPlayerJoinedPatch,
     applyPlayerLeft,
+    applyPlayerLeftPatch,
+    navigate,
     setConnection,
     showError,
   ]);
