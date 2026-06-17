@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { useAuthStore } from "../../stores/authStore";
 import { useGameStore } from "../../stores/gameStore";
 import { useLoadingStore } from "../../stores/loadingStore";
+import { useConquestStore } from "../../stores/conquestStore";
 import { useGameSession } from "./useGameSession";
 
 describe("useGameSession", () => {
@@ -40,7 +41,7 @@ describe("useGameSession", () => {
     expect(useGameStore.getState().session).toBeNull();
   });
 
-  it("selects own pieces, submits moves, and reconciles authoritative success", async () => {
+  it("selects own pieces and starts a conquest question without moving immediately", async () => {
     useAuthStore.getState().login(createJwt("user-1"));
     const { result } = renderHook(() => useGameSession("session-1"));
 
@@ -54,7 +55,9 @@ describe("useGameSession", () => {
       await result.current.moveSelectedPiece({ x: 1, y: 0 });
     });
 
-    expect(useGameStore.getState().session?.turnNumber).toBe(2);
+    expect(useConquestStore.getState().question?.questionAttemptId).toBe("attempt-1");
+    expect(useGameStore.getState().session?.turnNumber).toBe(1);
+    expect(useGameStore.getState().piecesById["piece-1"].currentTileId).toBe("tile-0-0");
     expect(useGameStore.getState().selectedPieceId).toBeNull();
   });
 

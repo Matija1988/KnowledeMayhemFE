@@ -1,4 +1,5 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { useAuthStore } from "../../stores/authStore";
@@ -36,6 +37,21 @@ describe("GameSessionPage", () => {
     });
 
     await waitFor(() => expect(screen.getByText(/connection: reconnecting/i)).toBeInTheDocument());
+  });
+
+  it("starts a conquest question from board target selection without moving immediately", async () => {
+    const user = userEvent.setup();
+    useAuthStore.getState().login(createJwt("user-1"));
+
+    renderGamePage("/game/session-1");
+    await waitFor(() => expect(screen.getAllByText(/turn 1/i).length).toBeGreaterThan(0));
+
+    await user.click(screen.getByRole("gridcell", { name: /row 1 column 1/i }));
+    await user.click(screen.getByRole("gridcell", { name: /row 1 column 2/i }));
+
+    expect(await screen.findByRole("dialog", { name: /conquest question/i })).toBeInTheDocument();
+    expect(screen.getByText(/which answer conquers this tile/i)).toBeInTheDocument();
+    expect(useGameStore.getState().piecesById["piece-1"].currentTileId).toBe("tile-0-0");
   });
 });
 

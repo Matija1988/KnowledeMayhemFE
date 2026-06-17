@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { getGameHubUrl, joinGameSessionHubGroup, registerGameHubHandlers } from "./gameHub";
 import { gameActionResultFixture, gameSessionFixture } from "../tests/fixtures/gameFixtures";
+import { conquestResultFixture, gameplayQuestionFixture } from "../tests/fixtures/conquestFixtures";
 
 describe("gameHub", () => {
   it("derives the game hub URL from the API base URL", () => {
@@ -21,6 +22,9 @@ describe("gameHub", () => {
       onMoveExecuted: vi.fn(),
       onTileOwnershipChanged: vi.fn(),
       onTurnAdvanced: vi.fn(),
+      onGameplayQuestion: vi.fn(),
+      onQuestionAttempt: vi.fn(),
+      onConquestResult: vi.fn(),
       onPatchNeedsRefresh: vi.fn(),
       onConnectionStatus: vi.fn(),
     };
@@ -34,10 +38,14 @@ describe("gameHub", () => {
       turnNumber: 2,
       reason: "Move",
     });
+    callbacks.get("QuestionIssued")?.(gameplayQuestionFixture());
+    callbacks.get("ConquestSucceeded")?.(conquestResultFixture());
 
     expect(handlers.onSession).toHaveBeenCalledWith(expect.objectContaining({ id: "session-1" }));
     expect(handlers.onActionResult).toHaveBeenCalledWith(expect.objectContaining({ turn: expect.objectContaining({ turnNumber: 2 }) }));
     expect(handlers.onTurnAdvanced).toHaveBeenCalledWith(expect.objectContaining({ currentTurnPlayerId: "player-2" }));
+    expect(handlers.onGameplayQuestion).toHaveBeenCalledWith(expect.objectContaining({ questionAttemptId: "attempt-1" }));
+    expect(handlers.onConquestResult).toHaveBeenCalledWith(expect.objectContaining({ resultStatus: "Succeeded" }));
     expect(connection.onreconnecting).toHaveBeenCalled();
   });
 

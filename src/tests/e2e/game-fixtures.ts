@@ -68,6 +68,26 @@ export const movedGameSession = {
   ),
 };
 
+export const conquestQuestion = {
+  questionAttemptId: "attempt-1",
+  questionId: "question-1",
+  gameSessionId: "session-1",
+  playerId: "player-1",
+  pieceId: "piece-1",
+  sourceTileId: "tile-0-0",
+  targetTileId: "tile-1-0",
+  categoryId: "cat-1",
+  categoryName: "History",
+  questionText: "Which answer conquers this tile?",
+  answerOptions: [
+    { id: "answer-1", text: "Alpha" },
+    { id: "answer-2", text: "Beta" },
+    { id: "answer-3", text: "Gamma" },
+    { id: "answer-4", text: "Delta" },
+  ],
+  expiresAtUtc: null,
+};
+
 export async function signInToGame(page: Page) {
   await page.addInitScript((accessToken) => {
     window.localStorage.setItem("knowledge-mayhem.auth", JSON.stringify({ accessToken }));
@@ -94,6 +114,29 @@ export async function routeGameApi(page: Page) {
           turnNumber: 2,
           status: null,
         },
+      }),
+    });
+  });
+  await page.route("**/api/game-sessions/session-1/conquest-attempts", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(conquestQuestion) });
+  });
+  await page.route("**/api/question-attempts/attempt-1/answer", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        questionAttemptId: "attempt-1",
+        gameSessionId: "session-1",
+        resultStatus: "Succeeded",
+        isCorrect: true,
+        pieceId: "piece-1",
+        sourceTileId: "tile-0-0",
+        targetTileId: "tile-1-0",
+        currentTileId: "tile-1-0",
+        ownerPlayerId: "player-1",
+        nextTurnPlayerId: "player-2",
+        turnNumber: 2,
+        session: movedGameSession,
       }),
     });
   });

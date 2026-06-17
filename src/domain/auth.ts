@@ -31,6 +31,8 @@ export type LoadingState = {
     | "startLobby"
     | "readGame"
     | "movePiece"
+    | "startConquest"
+    | "submitConquest"
     | "reconnectGame"
     | null;
 };

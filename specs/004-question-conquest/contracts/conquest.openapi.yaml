@@ -1,0 +1,238 @@
+openapi: 3.0.3
+info:
+  title: Knowledge Mayhem Question Conquest API
+  version: 0.1.0
+  description: Frontend planning contract for gameplay question conquest attempts and answer validation.
+servers:
+  - url: '{apiBaseUrl}'
+    variables:
+      apiBaseUrl:
+        default: https://localhost:5001
+security:
+  - bearerAuth: []
+paths:
+  /api/game-sessions/{gameSessionId}/conquest-attempts:
+    post:
+      summary: Start a conquest attempt for a selected piece and target tile
+      operationId: startConquestAttempt
+      parameters:
+        - $ref: '#/components/parameters/GameSessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartConquestAttemptRequest'
+      responses:
+        '200':
+          description: Gameplay question issued for the conquest attempt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameplayQuestion'
+        '400':
+          description: Invalid conquest target or malformed request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '401':
+          description: Authentication required
+        '403':
+          description: User is not allowed to start this attempt
+        '404':
+          description: Game session, piece, or target tile not found
+        '409':
+          description: Attempt cannot start due to turn, game status, occupancy, blocked tile, pending attempt, or stale state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/question-attempts/{questionAttemptId}/answer:
+    post:
+      summary: Submit the selected answer for a pending conquest attempt
+      operationId: submitConquestAnswer
+      parameters:
+        - $ref: '#/components/parameters/QuestionAttemptId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitConquestAnswerRequest'
+      responses:
+        '200':
+          description: Authoritative conquest result after answer validation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConquestResult'
+        '400':
+          description: Answer does not belong to the question or request is invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '401':
+          description: Authentication required
+        '403':
+          description: User is not allowed to answer this attempt
+        '404':
+          description: Question attempt or answer option not found
+        '409':
+          description: Attempt already answered, expired, cancelled, or otherwise not answerable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    GameSessionId:
+      name: gameSessionId
+      in: path
+      required: true
+      schema:
+        type: string
+    QuestionAttemptId:
+      name: questionAttemptId
+      in: path
+      required: true
+      schema:
+        type: string
+  schemas:
+    StartConquestAttemptRequest:
+      type: object
+      required:
+        - pieceId
+        - targetTileId
+      properties:
+        pieceId:
+          type: string
+        targetTileId:
+          type: string
+    SubmitConquestAnswerRequest:
+      type: object
+      required:
+        - answerId
+      properties:
+        answerId:
+          type: string
+    GameplayQuestion:
+      type: object
+      required:
+        - questionAttemptId
+        - questionId
+        - gameSessionId
+        - playerId
+        - pieceId
+        - sourceTileId
+        - targetTileId
+        - categoryId
+        - questionText
+        - answerOptions
+      properties:
+        questionAttemptId:
+          type: string
+        questionId:
+          type: string
+        gameSessionId:
+          type: string
+        playerId:
+          type: string
+        pieceId:
+          type: string
+        sourceTileId:
+          type: string
+        targetTileId:
+          type: string
+        categoryId:
+          type: string
+        categoryName:
+          type: string
+          nullable: true
+        questionText:
+          type: string
+        answerOptions:
+          type: array
+          minItems: 4
+          maxItems: 4
+          items:
+            $ref: '#/components/schemas/GameplayAnswerOption'
+        expiresAtUtc:
+          type: string
+          format: date-time
+          nullable: true
+    GameplayAnswerOption:
+      type: object
+      required:
+        - id
+        - text
+      properties:
+        id:
+          type: string
+        text:
+          type: string
+    QuestionAttemptStatus:
+      type: string
+      enum:
+        - Pending
+        - Succeeded
+        - Failed
+        - Expired
+        - Cancelled
+    ConquestResult:
+      type: object
+      required:
+        - questionAttemptId
+        - resultStatus
+        - isCorrect
+        - pieceId
+        - sourceTileId
+        - targetTileId
+        - currentTileId
+        - turnNumber
+      properties:
+        questionAttemptId:
+          type: string
+        resultStatus:
+          $ref: '#/components/schemas/QuestionAttemptStatus'
+        isCorrect:
+          type: boolean
+          description: Result-only correctness after answer validation or expiration resolution.
+        pieceId:
+          type: string
+        sourceTileId:
+          type: string
+        targetTileId:
+          type: string
+        currentTileId:
+          type: string
+        ownerPlayerId:
+          type: string
+          nullable: true
+        nextTurnPlayerId:
+          type: string
+          nullable: true
+        turnNumber:
+          type: integer
+          minimum: 0
+        session:
+          type: object
+          nullable: true
+          description: Optional full game session snapshot matching the game session contract.
+    ProblemDetails:
+      type: object
+      properties:
+        title:
+          type: string
+        detail:
+          type: string
+        status:
+          type: integer
+        traceId:
+          type: string

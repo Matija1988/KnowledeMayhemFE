@@ -5,9 +5,14 @@ import {
   isGameMoveExecutedEvent,
   isGameTileOwnershipChangedEvent,
   isGameTurnAdvancedEvent,
+  isConquestResultEvent,
+  isGameplayQuestionEvent,
+  toConquestResultEvent,
+  toGameplayQuestionEvent,
   toGameActionResultEvent,
   toGameSessionEvent,
 } from "./gameEvents";
+import { conquestResultFixture, gameplayQuestionFixture } from "../tests/fixtures/conquestFixtures";
 
 describe("gameEvents", () => {
   it("maps session and action result events", () => {
@@ -29,5 +34,13 @@ describe("gameEvents", () => {
     ).toBe(true);
     expect(isGameTileOwnershipChangedEvent({ gameSessionId: "session-1", tileId: "tile-1-0", ownerPlayerId: null })).toBe(true);
     expect(isGameTurnAdvancedEvent({ gameSessionId: "session-1", currentTurnPlayerId: "player-2", turnNumber: 2 })).toBe(true);
+  });
+
+  it("maps and guards conquest realtime payloads", () => {
+    expect(gameEventNames.questionIssued).toBe("QuestionIssued");
+    expect(isGameplayQuestionEvent(gameplayQuestionFixture())).toBe(true);
+    expect(isConquestResultEvent(conquestResultFixture())).toBe(true);
+    expect(toGameplayQuestionEvent(gameplayQuestionFixture()).answerOptions).toHaveLength(4);
+    expect(toConquestResultEvent(conquestResultFixture()).turnNumber).toBe(2);
   });
 });

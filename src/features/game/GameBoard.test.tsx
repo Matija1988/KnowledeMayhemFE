@@ -78,4 +78,28 @@ describe("GameBoard", () => {
 
     expect(onTargetSelect).not.toHaveBeenCalled();
   });
+
+  it("blocks board activation while conquest interaction is pending", async () => {
+    const user = userEvent.setup();
+    const onPieceSelect = vi.fn();
+    const onTargetSelect = vi.fn();
+
+    render(
+      <GameBoard
+        session={gameSessionFixture()}
+        currentUserId="user-1"
+        selectedPieceId="piece-1"
+        candidateTargets={[{ x: 1, y: 0 }]}
+        disabled
+        onPieceSelect={onPieceSelect}
+        onTargetSelect={onTargetSelect}
+      />,
+    );
+
+    await user.click(screen.getByRole("gridcell", { name: /row 1 column 2/i }));
+
+    expect(onPieceSelect).not.toHaveBeenCalled();
+    expect(onTargetSelect).not.toHaveBeenCalled();
+    expect(screen.getByRole("gridcell", { name: /row 1 column 2/i })).toHaveAttribute("aria-disabled", "true");
+  });
 });

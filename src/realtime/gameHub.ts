@@ -1,15 +1,22 @@
 import * as signalR from "@microsoft/signalr";
 import { apiBaseUrl } from "../api/apiConfig";
 import type { GameActionResult, GameSession } from "../domain/game/gameTypes";
+import type { ConquestResult, GameplayQuestion, QuestionAttemptEvent } from "../domain/conquest/conquestTypes";
 import {
   gameEventNames,
+  isConquestResultEvent,
   isGameActionResult,
   isGameMoveExecutedEvent,
   isGameSession,
   isGameTileOwnershipChangedEvent,
   isGameTurnAdvancedEvent,
+  isGameplayQuestionEvent,
+  isQuestionAttemptEvent,
+  toConquestResultEvent,
   toGameActionResultEvent,
   toGameSessionEvent,
+  toGameplayQuestionEvent,
+  toQuestionAttemptEvent,
   type GameMoveExecutedEventDto,
   type GameTileOwnershipChangedEventDto,
   type GameTurnAdvancedEventDto,
@@ -29,6 +36,9 @@ export type GameHubHandlers = {
   onMoveExecuted: (event: GameMoveExecutedEventDto) => void;
   onTileOwnershipChanged: (event: GameTileOwnershipChangedEventDto) => void;
   onTurnAdvanced: (event: GameTurnAdvancedEventDto) => void;
+  onGameplayQuestion?: (question: GameplayQuestion) => void;
+  onQuestionAttempt?: (event: QuestionAttemptEvent) => void;
+  onConquestResult?: (result: ConquestResult) => void;
   onPatchNeedsRefresh: () => void;
   onConnectionStatus: (status: "connected" | "reconnecting" | "disconnected") => void;
 };
@@ -63,6 +73,18 @@ export function registerGameHubHandlers(connection: HubLike, handlers: GameHubHa
       handlers.onSession(toGameSessionEvent(payload));
       return;
     }
+    if (isConquestResultEvent(payload)) {
+      handlers.onConquestResult?.(toConquestResultEvent(payload));
+      return;
+    }
+    if (isGameplayQuestionEvent(payload)) {
+      handlers.onGameplayQuestion?.(toGameplayQuestionEvent(payload));
+      return;
+    }
+    if (isQuestionAttemptEvent(payload)) {
+      handlers.onQuestionAttempt?.(toQuestionAttemptEvent(payload));
+      return;
+    }
     if (typeof payload === "object" && payload !== null && "session" in payload && isGameSession(payload.session)) {
       handlers.onSession(toGameSessionEvent(payload.session));
       return;
@@ -93,6 +115,12 @@ export function registerGameHubHandlers(connection: HubLike, handlers: GameHubHa
   connection.on(gameEventNames.turnAdvanced, handlePayload);
   connection.on(gameEventNames.completed, handlePayload);
   connection.on(gameEventNames.cancelled, handlePayload);
+  connection.on(gameEventNames.conquestAttemptStarted, handlePayload);
+  connection.on(gameEventNames.questionIssued, handlePayload);
+  connection.on(gameEventNames.answerSubmitted, handlePayload);
+  connection.on(gameEventNames.conquestSucceeded, handlePayload);
+  connection.on(gameEventNames.conquestFailed, handlePayload);
+  connection.on(gameEventNames.conquestExpired, handlePayload);
   connection.onreconnecting?.(() => handlers.onConnectionStatus("reconnecting"));
   connection.onreconnected?.(() => handlers.onConnectionStatus("connected"));
   connection.onclose?.(() => handlers.onConnectionStatus("disconnected"));

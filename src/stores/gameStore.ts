@@ -9,6 +9,7 @@ import type {
   GameSessionStatus,
   Piece,
 } from "../domain/game/gameTypes";
+import type { ConquestResult } from "../domain/conquest/conquestTypes";
 
 type PendingMove = {
   pieceId: string;
@@ -39,6 +40,7 @@ type GameStore = {
   applyMovePatch: (gameSessionId: string, pieceId: string, fromTileId: string, toTileId: string, turnNumber: number) => void;
   applyTileOwnershipPatch: (gameSessionId: string, tileId: string, ownerPlayerId: string | null) => void;
   applyTurnPatch: (gameSessionId: string, currentTurnPlayerId: string | null, turnNumber: number) => void;
+  applyConquestResult: (result: ConquestResult) => boolean;
   requestSnapshotRefresh: (message?: string) => void;
   resetGame: () => void;
 };
@@ -176,6 +178,84 @@ export const useGameStore = create<GameStore>((set) => ({
         liveMessage: `Turn ${turnNumber}.`,
       };
     }),
+  applyConquestResult: (result) => {
+    let applied = false;
+    set((state) => {
+      if (!state.session || state.session.id !== result.gameSessionId) {
+        return {};
+      }
+      if (result.turnNumber < state.session.turnNumber) {
+        return {};
+      }
+
+      if (result.session) {
+        applied = true;
+        return {
+          session: result.session,
+          ...normalizeSession(result.session),
+          selectedPieceId: null,
+          candidateTargets: [],
+          pendingOperation: null,
+          pendingMove: null,
+          blockingError: blockingErrorFromStatus(result.session.status),
+          liveMessage: conquestLiveMessage(result),
+        };
+      }
+
+      const piece = state.session.pieces.find((candidate) => candidate.id === result.pieceId);
+      const sourceTile = state.session.tiles.find((tile) => tile.id === result.sourceTileId);
+      const targetTile = state.session.tiles.find((tile) => tile.id === result.targetTileId);
+      if (!piece || !sourceTile || !targetTile) {
+        return {
+          pendingOperation: "reconnectGame",
+          selectedPieceId: null,
+          candidateTargets: [],
+          blockingError: {
+            title: "Game board problem",
+            message: "The conquest result references board data that is no longer loaded. Refreshing the game state.",
+            reason: "conquestDesync",
+          },
+          liveMessage: "Refreshing game state after conquest result.",
+        };
+      }
+
+      const pieces = state.session.pieces.map((candidate) =>
+        candidate.id === result.pieceId ? { ...candidate, currentTileId: result.currentTileId } : candidate,
+      );
+      const tiles = state.session.tiles.map((tile) => {
+        if (tile.id === result.sourceTileId && result.currentTileId !== result.sourceTileId) {
+          return { ...tile, occupyingPieceId: null };
+        }
+        if (tile.id === result.targetTileId) {
+          return {
+            ...tile,
+            occupyingPieceId: result.currentTileId === result.targetTileId ? result.pieceId : tile.occupyingPieceId,
+            ownerPlayerId: result.ownerPlayerId,
+          };
+        }
+        return tile;
+      });
+      const session = {
+        ...state.session,
+        pieces,
+        tiles,
+        currentTurnPlayerId: result.nextTurnPlayerId,
+        turnNumber: result.turnNumber,
+      };
+      applied = true;
+
+      return {
+        session,
+        ...normalizeSession(session),
+        selectedPieceId: null,
+        candidateTargets: [],
+        pendingOperation: null,
+        pendingMove: null,
+        liveMessage: conquestLiveMessage(result),
+      };
+    });
+    return applied;
+  },
   requestSnapshotRefresh: (message = "Refreshing game state.") =>
     set({
       pendingOperation: "reconnectGame",
@@ -238,4 +318,17 @@ function blockingErrorFromStatus(status: GameSessionStatus): BlockingGameError |
     return { title: "Game cancelled", message: "This game has been cancelled.", reason: "cancelled" };
   }
   return null;
+}
+
+function conquestLiveMessage(result: ConquestResult): string {
+  if (result.resultStatus === "Succeeded" || result.isCorrect) {
+    return `Correct answer. Turn ${result.turnNumber}.`;
+  }
+  if (result.resultStatus === "Expired") {
+    return `Question expired. Turn ${result.turnNumber}.`;
+  }
+  if (result.resultStatus === "Cancelled") {
+    return `Conquest cancelled. Turn ${result.turnNumber}.`;
+  }
+  return `Incorrect answer. Turn ${result.turnNumber}.`;
 }

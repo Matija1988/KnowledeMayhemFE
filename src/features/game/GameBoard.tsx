@@ -8,6 +8,7 @@ type GameBoardProps = {
   currentUserId: string | null;
   selectedPieceId?: string | null;
   candidateTargets?: BoardCoordinate[];
+  disabled?: boolean;
   onPieceSelect?: (pieceId: string) => void;
   onTargetSelect?: (target: BoardCoordinate) => void;
 };
@@ -17,6 +18,7 @@ export function GameBoard({
   currentUserId,
   selectedPieceId = null,
   candidateTargets = [],
+  disabled = false,
   onPieceSelect,
   onTargetSelect,
 }: GameBoardProps) {
@@ -43,8 +45,12 @@ export function GameBoard({
               pieceOwner={pieceOwner}
               isCurrentUserPiece={Boolean(currentUserId && pieceOwner?.userId === currentUserId)}
               isSelected={Boolean(piece && piece.id === selectedPieceId)}
-              isValidTarget={isValidTarget}
+              isValidTarget={!disabled && isValidTarget}
+              isDisabled={disabled}
               onActivate={() => {
+                if (disabled) {
+                  return;
+                }
                 if (isValidTarget) {
                   onTargetSelect?.({ x: tile.x, y: tile.y });
                 } else if (piece) {

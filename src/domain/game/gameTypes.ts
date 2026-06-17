@@ -76,7 +76,7 @@ export type ConnectionState = {
   lastUpdatedAtUtc: string | null;
 };
 
-export type GameOperation = "readGame" | "movePiece" | "reconnectGame";
+export type GameOperation = "readGame" | "movePiece" | "startConquest" | "submitConquest" | "reconnectGame";
 
 export type GameActionError = {
   title: string;
@@ -93,7 +93,8 @@ export type BlockingGameError = {
     | "cancelled"
     | "unavailable"
     | "unauthorized"
-    | "reconnectFailed";
+    | "reconnectFailed"
+    | "conquestDesync";
 };
 
 export type BoardCoordinate = {

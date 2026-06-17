@@ -490,6 +490,11 @@ button[type="submit"]:disabled {
   box-shadow: inset 0 0 0 2px #22c55e;
 }
 
+.game-tile--disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
 .game-tile__coordinate,
 .game-tile__category,
 .game-tile__state {
@@ -554,6 +559,99 @@ button[type="submit"]:disabled {
   padding: 0.05rem 0.4rem;
   font-size: 0.78rem;
   font-weight: 700;
+}
+
+.conquest-modal {
+  display: grid;
+  gap: 0.85rem;
+  width: min(34rem, calc(100vw - 2rem));
+}
+
+.conquest-modal h2,
+.conquest-result p,
+.conquest-question,
+.conquest-category,
+.conquest-readonly,
+.conquest-expired {
+  margin: 0;
+}
+
+.conquest-category,
+.conquest-readonly {
+  color: var(--text-secondary);
+}
+
+.conquest-question {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.conquest-answer-grid {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.conquest-answer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  min-height: 3rem;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  padding: 0.7rem 0.8rem;
+  background: #0f2238;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.conquest-answer:hover:not(:disabled) {
+  border-color: var(--action-primary-hover);
+}
+
+.conquest-answer--selected {
+  border-color: #93c5fd;
+  box-shadow: inset 0 0 0 2px #93c5fd;
+}
+
+.conquest-answer:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.conquest-answer__state {
+  border: 1px solid #93c5fd;
+  border-radius: 8px;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.conquest-result,
+.conquest-blocking-error,
+.conquest-expired,
+.conquest-timer {
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  padding: 0.65rem;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.conquest-result--success {
+  border-color: #16a34a;
+}
+
+.conquest-result--failed,
+.conquest-result--expired,
+.conquest-result--cancelled,
+.conquest-blocking-error {
+  border-color: var(--error);
+}
+
+.conquest-timer--warning,
+.conquest-expired {
+  border-color: #d97706;
 }
 
 @media (max-width: 760px) {

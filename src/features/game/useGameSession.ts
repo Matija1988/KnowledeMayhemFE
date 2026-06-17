@@ -1,6 +1,7 @@
 import { useCallback, useEffect } from "react";
 import { getUserIdFromJwt } from "../../domain/auth";
-import { getGameSession, movePiece, normalizeGameError } from "../../api/gameApi";
+import { getGameSession, normalizeGameError } from "../../api/gameApi";
+import { useConquestActions } from "../conquest/useConquestActions";
 import {
   findTileByCoordinate,
   getOrthogonalCandidateTargets,
@@ -10,6 +11,8 @@ import {
 import type { BoardCoordinate } from "../../domain/game/gameTypes";
 import { createGameHubConnection, joinGameSessionHubGroup, registerGameHubHandlers } from "../../realtime/gameHub";
 import { useAuthStore } from "../../stores/authStore";
+import { selectCurrentUserPlayer } from "../../stores/gameStore";
+import { useConquestStore } from "../../stores/conquestStore";
 import { useErrorStore } from "../../stores/errorStore";
 import { useGameStore } from "../../stores/gameStore";
 import { useLoadingStore } from "../../stores/loadingStore";
@@ -30,7 +33,6 @@ export function useGameSession(sessionId: string | undefined) {
   const pendingOperation = useGameStore((state) => state.pendingOperation);
   const selectedPieceId = useGameStore((state) => state.selectedPieceId);
   const selectPieceInStore = useGameStore((state) => state.selectPiece);
-  const beginMove = useGameStore((state) => state.beginMove);
   const applyMoveResult = useGameStore((state) => state.applyMoveResult);
   const applyGameSnapshot = useGameStore((state) => state.applyGameSnapshot);
   const applyMovePatch = useGameStore((state) => state.applyMovePatch);
@@ -38,8 +40,7 @@ export function useGameSession(sessionId: string | undefined) {
   const applyTurnPatch = useGameStore((state) => state.applyTurnPatch);
   const requestSnapshotRefresh = useGameStore((state) => state.requestSnapshotRefresh);
   const setConnection = useGameStore((state) => state.setConnection);
-
-  const currentUserId = accessToken ? getUserIdFromJwt(accessToken) : null;
+  const resetConquest = useConquestStore((state) => state.resetConquest);
 
   const loadSession = useCallback(async () => {
     if (!sessionId || !accessToken) {
@@ -65,10 +66,34 @@ export function useGameSession(sessionId: string | undefined) {
     }
   }, [accessToken, beginOperation, endOperation, hideLoading, sessionId, setBlockingError, setSession, showError, showLoading]);
 
+  const currentUserId = accessToken ? getUserIdFromJwt(accessToken) : null;
+  const currentPlayerId = selectCurrentUserPlayer(session, currentUserId)?.id ?? null;
+  const conquest = useConquestActions({
+    session,
+    accessToken,
+    currentPlayerId,
+    currentUserId,
+    selectedPieceId,
+    reload: async () => {
+      await loadSession();
+    },
+  });
+  const {
+    conquestState,
+    startAttempt,
+    selectAnswer,
+    submitAnswer,
+    expirePending,
+    receiveQuestion,
+    receiveAttempt,
+    applyConquestResult,
+  } = conquest;
+
   useEffect(() => {
     resetGame();
+    resetConquest();
     void loadSession();
-  }, [loadSession, resetGame]);
+  }, [loadSession, resetConquest, resetGame]);
 
   useEffect(() => {
     if (!sessionId || !accessToken || import.meta.env.MODE === "test") {
@@ -128,6 +153,24 @@ export function useGameSession(sessionId: string | undefined) {
         }
         applyTurnPatch(event.gameSessionId, event.currentTurnPlayerId, event.turnNumber);
       },
+      onGameplayQuestion: (question) => {
+        if (!isActive || question.gameSessionId !== sessionId) {
+          return;
+        }
+        receiveQuestion(question);
+      },
+      onQuestionAttempt: (event) => {
+        if (!isActive || event.gameSessionId !== sessionId) {
+          return;
+        }
+        receiveAttempt(event);
+      },
+      onConquestResult: (result) => {
+        if (!isActive || result.gameSessionId !== sessionId) {
+          return;
+        }
+        applyConquestResult(result);
+      },
       onPatchNeedsRefresh: () => {
         if (!isActive) {
           return;
@@ -183,7 +226,10 @@ export function useGameSession(sessionId: string | undefined) {
     applyMoveResult,
     applyTileOwnershipPatch,
     applyTurnPatch,
+    applyConquestResult,
     loadSession,
+    receiveAttempt,
+    receiveQuestion,
     requestSnapshotRefresh,
     sessionId,
     setConnection,
@@ -216,20 +262,9 @@ export function useGameSession(sessionId: string | undefined) {
         return;
       }
 
-      beginMove(selectedPieceId, target);
-      showLoading("movePiece");
-      try {
-        const result = await movePiece(session.id, { pieceId: selectedPieceId, targetX: target.x, targetY: target.y }, { accessToken });
-        applyMoveResult(result.session, "Move completed.");
-      } catch (error) {
-        const normalized = normalizeGameError(error);
-        showError(normalized);
-        endOperation();
-      } finally {
-        hideLoading();
-      }
+      await startAttempt(target);
     },
-    [accessToken, applyMoveResult, beginMove, endOperation, hideLoading, pendingOperation, selectedPieceId, session, showError, showLoading],
+    [accessToken, pendingOperation, selectedPieceId, session, showError, startAttempt],
   );
 
   return {
@@ -243,5 +278,9 @@ export function useGameSession(sessionId: string | undefined) {
     moveSelectedPiece,
     reload: loadSession,
     applyRealtimeSession: applyGameSnapshot,
+    conquestState,
+    selectAnswer,
+    submitAnswer,
+    expireConquest: expirePending,
   };
 }

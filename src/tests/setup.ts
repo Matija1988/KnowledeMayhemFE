@@ -4,13 +4,15 @@ import { setupServer } from "msw/node";
 import { identityHandlers } from "./handlers/identityHandlers";
 import { lobbyHandlers } from "./handlers/lobbyHandlers";
 import { gameHandlers } from "./handlers/gameHandlers";
+import { conquestHandlers } from "./handlers/conquestHandlers";
 import { resetAuthStoreForTests } from "../stores/authStore";
 import { resetErrorStoreForTests } from "../stores/errorStore";
 import { resetGameStoreForTests } from "../stores/gameStore";
+import { resetConquestStoreForTests } from "../stores/conquestStore";
 import { resetLoadingStoreForTests } from "../stores/loadingStore";
 import { resetLobbyStoreForTests } from "../stores/lobbyStore";
 
-export const server = setupServer(...identityHandlers, ...lobbyHandlers, ...gameHandlers);
+export const server = setupServer(...identityHandlers, ...lobbyHandlers, ...gameHandlers, ...conquestHandlers);
 
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 
@@ -19,6 +21,7 @@ afterEach(() => {
   resetAuthStoreForTests();
   resetErrorStoreForTests();
   resetGameStoreForTests();
+  resetConquestStoreForTests();
   resetLoadingStoreForTests();
   resetLobbyStoreForTests();
 });

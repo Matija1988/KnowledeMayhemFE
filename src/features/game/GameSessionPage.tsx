@@ -4,13 +4,29 @@ import { GamePlayerPanel } from "./GamePlayerPanel";
 import { GameStatusBar } from "./GameStatusBar";
 import { useGameSession } from "./useGameSession";
 import { useGameStore } from "../../stores/gameStore";
+import { QuestionModal } from "../conquest/QuestionModal";
+import { selectHasPendingConquest } from "../../stores/conquestStore";
 
 export function GameSessionPage() {
   const { sessionId } = useParams();
-  const { session, blockingError, connection, currentUserId, isLoading, selectedPieceId, selectPiece, moveSelectedPiece } =
-    useGameSession(sessionId);
+  const {
+    session,
+    blockingError,
+    connection,
+    currentUserId,
+    isLoading,
+    selectedPieceId,
+    selectPiece,
+    moveSelectedPiece,
+    conquestState,
+    selectAnswer,
+    submitAnswer,
+    expireConquest,
+  } = useGameSession(sessionId);
   const liveMessage = useGameStore((state) => state.liveMessage);
   const candidateTargets = useGameStore((state) => state.candidateTargets);
+  const currentPlayerId = session?.players.find((player) => player.userId === currentUserId)?.id ?? null;
+  const conquestPending = selectHasPendingConquest(conquestState);
 
   if (isLoading && !session && !blockingError) {
     return (
@@ -54,11 +70,25 @@ export function GameSessionPage() {
           currentUserId={currentUserId}
           selectedPieceId={selectedPieceId}
           candidateTargets={candidateTargets}
+          disabled={conquestPending}
           onPieceSelect={selectPiece}
           onTargetSelect={(target) => void moveSelectedPiece(target)}
         />
         <GamePlayerPanel session={session} currentUserId={currentUserId} />
       </div>
+      <QuestionModal
+        question={conquestState.question}
+        result={conquestState.lastResult}
+        selectedAnswerId={conquestState.selectedAnswerId}
+        pendingAnswer={conquestState.pendingAnswer}
+        expiredPending={conquestState.expiredPending}
+        blockingError={conquestState.blockingError}
+        actingPlayerId={currentPlayerId}
+        liveMessage={conquestState.liveMessage}
+        onSelectAnswer={selectAnswer}
+        onSubmitAnswer={() => void submitAnswer()}
+        onExpired={expireConquest}
+      />
     </main>
   );
 }

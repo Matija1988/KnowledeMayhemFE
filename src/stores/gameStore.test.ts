@@ -1,6 +1,7 @@
 import { act } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { gameSessionFixture } from "../tests/fixtures/gameFixtures";
+import { conquestResultFixture } from "../tests/fixtures/conquestFixtures";
 import {
   resetGameStoreForTests,
   selectBoardCells,
@@ -91,6 +92,25 @@ describe("gameStore", () => {
     expect(useGameStore.getState().session?.id).toBe("session-1");
     expect(useGameStore.getState().pendingOperation).toBe("reconnectGame");
     expect(useGameStore.getState().liveMessage).toBe("Refresh required.");
+  });
+
+  it("applies authoritative conquest results and suppresses stale result patches", () => {
+    const session = gameSessionFixture();
+
+    act(() => {
+      useGameStore.getState().setSession(session);
+      useGameStore.getState().applyConquestResult(conquestResultFixture({ session: null }));
+    });
+
+    expect(useGameStore.getState().piecesById["piece-1"].currentTileId).toBe("tile-1-0");
+    expect(useGameStore.getState().tilesById["tile-1-0"].ownerPlayerId).toBe("player-1");
+    expect(useGameStore.getState().session?.turnNumber).toBe(2);
+
+    act(() => {
+      useGameStore.getState().applyConquestResult(conquestResultFixture({ session: null, turnNumber: 1 }));
+    });
+
+    expect(useGameStore.getState().session?.turnNumber).toBe(2);
   });
 
   it("derives current player, turn state, piece-on-tile, and board cells", () => {

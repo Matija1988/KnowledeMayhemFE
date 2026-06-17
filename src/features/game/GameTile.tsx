@@ -10,6 +10,7 @@ type GameTileProps = {
   isCurrentUserPiece: boolean;
   isSelected?: boolean;
   isValidTarget?: boolean;
+  isDisabled?: boolean;
   onActivate?: () => void;
 };
 
@@ -21,6 +22,7 @@ function GameTileComponent({
   isCurrentUserPiece,
   isSelected = false,
   isValidTarget = false,
+  isDisabled = false,
   onActivate,
 }: GameTileProps) {
   const label = [
@@ -30,6 +32,7 @@ function GameTileComponent({
     piece ? "occupied" : "empty",
     isSelected ? "selected" : null,
     isValidTarget ? "valid target" : null,
+    isDisabled ? "interaction paused" : null,
   ]
     .filter(Boolean)
     .join(", ");
@@ -39,7 +42,8 @@ function GameTileComponent({
       role="gridcell"
       aria-label={label}
       tabIndex={0}
-      className={`game-tile game-tile--${tile.tileType.toLowerCase()}${isSelected ? " game-tile--selected" : ""}${isValidTarget ? " game-tile--valid" : ""}`}
+      aria-disabled={isDisabled}
+      className={`game-tile game-tile--${tile.tileType.toLowerCase()}${isSelected ? " game-tile--selected" : ""}${isValidTarget ? " game-tile--valid" : ""}${isDisabled ? " game-tile--disabled" : ""}`}
       onClick={onActivate}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
