@@ -4,7 +4,9 @@ import {
   mapConquestResult,
   mapGameplayQuestion,
   type ConquestResultDto,
+  type ConquestResultFallback,
   type GameplayQuestionDto,
+  type GameplayQuestionFallback,
 } from "../domain/conquest/conquestMappers";
 import type {
   ConquestResult,
@@ -16,6 +18,8 @@ import type { GameActionError } from "../domain/game/gameTypes";
 
 type ConquestRequestOptions = {
   accessToken: string;
+  questionFallback?: GameplayQuestionFallback;
+  resultFallback?: ConquestResultFallback;
 };
 
 export async function startConquestAttempt(
@@ -31,23 +35,24 @@ export async function startConquestAttempt(
       body: request,
     },
   );
-  return mapGameplayQuestion(response);
+  return mapGameplayQuestion(response, options.questionFallback);
 }
 
 export async function submitConquestAnswer(
+  gameSessionId: string,
   questionAttemptId: string,
   request: SubmitConquestAnswerRequest,
   options: ConquestRequestOptions,
 ): Promise<ConquestResult> {
   const response = await authenticatedRequestJson<ConquestResultDto, SubmitConquestAnswerRequest>(
-    `${apiBaseUrl}/api/question-attempts/${questionAttemptId}/answer`,
+    `${apiBaseUrl}/api/game-sessions/${gameSessionId}/question-attempts/${questionAttemptId}/answers`,
     {
       method: "POST",
       accessToken: options.accessToken,
       body: request,
     },
   );
-  return mapConquestResult(response);
+  return mapConquestResult(response, options.resultFallback);
 }
 
 export function normalizeConquestError(error: unknown): GameActionError {
@@ -87,4 +92,3 @@ export function normalizeConquestError(error: unknown): GameActionError {
 
   return { title: "Conquest unavailable", message: "We could not complete that question action.", displayMode: "toast" };
 }
-

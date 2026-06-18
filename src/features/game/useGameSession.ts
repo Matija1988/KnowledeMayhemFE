@@ -68,15 +68,17 @@ export function useGameSession(sessionId: string | undefined) {
 
   const currentUserId = accessToken ? getUserIdFromJwt(accessToken) : null;
   const currentPlayerId = selectCurrentUserPlayer(session, currentUserId)?.id ?? null;
+  const reloadConquestSession = useCallback(async () => {
+    await loadSession();
+  }, [loadSession]);
+
   const conquest = useConquestActions({
     session,
     accessToken,
     currentPlayerId,
     currentUserId,
     selectedPieceId,
-    reload: async () => {
-      await loadSession();
-    },
+    reload: reloadConquestSession,
   });
   const {
     conquestState,

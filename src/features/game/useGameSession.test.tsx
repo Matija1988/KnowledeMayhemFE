@@ -1,9 +1,12 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
 import { useAuthStore } from "../../stores/authStore";
 import { useGameStore } from "../../stores/gameStore";
 import { useLoadingStore } from "../../stores/loadingStore";
 import { useConquestStore } from "../../stores/conquestStore";
+import { gameplayQuestionFixture } from "../../tests/fixtures/conquestFixtures";
+import { server } from "../../tests/setup";
 import { useGameSession } from "./useGameSession";
 
 describe("useGameSession", () => {
@@ -59,6 +62,36 @@ describe("useGameSession", () => {
     expect(useGameStore.getState().session?.turnNumber).toBe(1);
     expect(useGameStore.getState().piecesById["piece-1"].currentTileId).toBe("tile-0-0");
     expect(useGameStore.getState().selectedPieceId).toBeNull();
+  });
+
+  it("suppresses duplicate conquest attempts from rapid repeated target activation", async () => {
+    let attemptRequests = 0;
+    server.use(
+      http.post("**/api/game-sessions/:gameSessionId/conquest-attempts", async ({ params, request }) => {
+        attemptRequests += 1;
+        const body = (await request.json()) as { pieceId?: string; targetX?: number; targetY?: number };
+        return HttpResponse.json(
+          gameplayQuestionFixture({
+            gameSessionId: String(params.gameSessionId),
+            pieceId: body.pieceId ?? "piece-1",
+            targetTileId: `tile-${body.targetX ?? 1}-${body.targetY ?? 0}`,
+          }),
+        );
+      }),
+    );
+    useAuthStore.getState().login(createJwt("user-1"));
+    const { result } = renderHook(() => useGameSession("session-1"));
+
+    await waitFor(() => expect(useGameStore.getState().session?.id).toBe("session-1"));
+    act(() => result.current.selectPiece("piece-1"));
+    await waitFor(() => expect(result.current.selectedPieceId).toBe("piece-1"));
+
+    await act(async () => {
+      await Promise.all([result.current.moveSelectedPiece({ x: 1, y: 0 }), result.current.moveSelectedPiece({ x: 1, y: 0 })]);
+    });
+
+    expect(attemptRequests).toBe(1);
+    expect(useConquestStore.getState().question?.targetTileId).toBe("tile-1-0");
   });
 
   it("blocks invalid selections and rejected moves without changing durable board state", async () => {

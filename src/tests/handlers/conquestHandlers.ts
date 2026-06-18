@@ -3,19 +3,20 @@ import { conquestResultFixture, gameplayQuestionFixture } from "../fixtures/conq
 
 export const conquestHandlers = [
   http.post("**/api/game-sessions/:gameSessionId/conquest-attempts", async ({ params, request }) => {
-    const body = (await request.json()) as { pieceId?: string; targetTileId?: string };
-    if (body.targetTileId === "tile-2-0") {
+    const body = (await request.json()) as { pieceId?: string; targetX?: number; targetY?: number };
+    const targetTileId = `tile-${body.targetX ?? 1}-${body.targetY ?? 0}`;
+    if (body.targetX === 2 && body.targetY === 0) {
       return HttpResponse.json({ title: "Invalid target", detail: "That tile is occupied.", status: 409 }, { status: 409 });
     }
     return HttpResponse.json(
       gameplayQuestionFixture({
         gameSessionId: String(params.gameSessionId),
         pieceId: body.pieceId ?? "piece-1",
-        targetTileId: body.targetTileId ?? "tile-1-0",
+        targetTileId,
       }),
     );
   }),
-  http.post("**/api/question-attempts/:questionAttemptId/answer", async ({ params, request }) => {
+  http.post("**/api/game-sessions/:gameSessionId/question-attempts/:questionAttemptId/answers", async ({ params, request }) => {
     const body = (await request.json()) as { answerId?: string };
     const correct = body.answerId === "answer-1";
     return HttpResponse.json(
@@ -29,4 +30,3 @@ export const conquestHandlers = [
     );
   }),
 ];
-

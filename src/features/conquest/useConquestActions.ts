@@ -66,12 +66,13 @@ export function useConquestActions({
 
   const startAttempt = useCallback(
     async (target: BoardCoordinate) => {
+      const latestConquestState = useConquestStore.getState();
       const validation = validateConquestTarget(
         session,
         currentUserId,
         selectedPieceId,
         target,
-        Boolean(conquestState.question || conquestState.pendingAttempt || conquestState.expiredPending),
+        Boolean(latestConquestState.question || latestConquestState.pendingAttempt || latestConquestState.expiredPending),
       );
       if (!validation.ok) {
         showError({ title: "Move unavailable", message: validation.message, displayMode: "toast" });
@@ -87,8 +88,17 @@ export function useConquestActions({
       try {
         const nextQuestion = await startConquestAttempt(
           session.id,
-          { pieceId: selectedPieceId, targetTileId: validation.targetTileId },
-          { accessToken },
+          { pieceId: selectedPieceId, targetX: target.x, targetY: target.y },
+          {
+            accessToken,
+            questionFallback: {
+              gameSessionId: session.id,
+              playerId: currentPlayerId ?? undefined,
+              pieceId: selectedPieceId,
+              sourceTileId: validation.sourceTileId,
+              targetTileId: validation.targetTileId,
+            },
+          },
         );
         useConquestStore.getState().receiveQuestion(nextQuestion);
         selectPiece(null, []);
@@ -104,9 +114,6 @@ export function useConquestActions({
     [
       accessToken,
       beginOperation,
-      conquestState.expiredPending,
-      conquestState.pendingAttempt,
-      conquestState.question,
       currentUserId,
       endOperation,
       hideLoading,
@@ -133,7 +140,21 @@ export function useConquestActions({
     beginOperation("submitConquest");
     showLoading("submitConquest");
     try {
-      const result = await submitConquestAnswer(question.questionAttemptId, { answerId: selectedAnswerId }, { accessToken });
+      const result = await submitConquestAnswer(
+        question.gameSessionId,
+        question.questionAttemptId,
+        { answerId: selectedAnswerId },
+        {
+          accessToken,
+          resultFallback: {
+            gameSessionId: question.gameSessionId,
+            playerId: question.playerId,
+            pieceId: question.pieceId,
+            sourceTileId: question.sourceTileId,
+            targetTileId: question.targetTileId,
+          },
+        },
+      );
       applyConquestResult(result);
     } catch (error) {
       const normalized = normalizeConquestError(error);
@@ -185,4 +206,3 @@ export function useConquestActions({
     applyConquestResult,
   };
 }
-

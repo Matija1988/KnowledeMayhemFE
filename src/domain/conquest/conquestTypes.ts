@@ -65,10 +65,10 @@ export type ConquestUiState = {
 
 export type StartConquestAttemptRequest = {
   pieceId: string;
-  targetTileId: string;
+  targetX: number;
+  targetY: number;
 };
 
 export type SubmitConquestAnswerRequest = {
   answerId: string;
 };
-

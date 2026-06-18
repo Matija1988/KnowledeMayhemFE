@@ -10,6 +10,7 @@ import type {
 
 export type GameplayAnswerOptionDto = {
   id?: string;
+  answerId?: string;
   text?: string;
   isCorrect?: unknown;
   correct?: unknown;
@@ -49,21 +50,39 @@ export type ConquestResultDto = {
   questionAttemptId?: string;
   gameSessionId?: string;
   resultStatus?: QuestionAttemptStatus;
+  status?: QuestionAttemptStatus;
   isCorrect?: boolean;
+  wasAnswerCorrect?: boolean;
   pieceId?: string;
   sourceTileId?: string;
   targetTileId?: string;
   currentTileId?: string;
+  pieceTileId?: string;
   ownerPlayerId?: string | null;
+  updatedOwnerPlayerId?: string | null;
   nextTurnPlayerId?: string | null;
   turnNumber?: number;
   session?: GameSessionDto | null;
 };
 
+export type GameplayQuestionFallback = {
+  gameSessionId?: string;
+  playerId?: string;
+  pieceId?: string;
+  sourceTileId?: string;
+  targetTileId?: string;
+};
+
+export type ConquestResultFallback = GameplayQuestionFallback & {
+  pieceId?: string;
+  sourceTileId?: string;
+  targetTileId?: string;
+};
+
 const attemptStatuses = new Set<QuestionAttemptStatus>(["Pending", "Succeeded", "Failed", "Expired", "Cancelled"]);
 const resolvedStatuses = new Set<QuestionAttemptStatus>(["Succeeded", "Failed", "Expired", "Cancelled"]);
 
-export function mapGameplayQuestion(dto: GameplayQuestionDto): GameplayQuestion {
+export function mapGameplayQuestion(dto: GameplayQuestionDto, fallback: GameplayQuestionFallback = {}): GameplayQuestion {
   const questionAttemptId = requiredString(dto.questionAttemptId, "questionAttemptId");
   const answerOptions = dto.answerOptions;
   if (!Array.isArray(answerOptions) || answerOptions.length !== 4) {
@@ -73,11 +92,11 @@ export function mapGameplayQuestion(dto: GameplayQuestionDto): GameplayQuestion 
   return {
     questionAttemptId,
     questionId: requiredString(dto.questionId, "questionId"),
-    gameSessionId: requiredString(dto.gameSessionId, "gameSessionId"),
-    playerId: requiredString(dto.playerId, "playerId"),
-    pieceId: requiredString(dto.pieceId, "pieceId"),
-    sourceTileId: requiredString(dto.sourceTileId, "sourceTileId"),
-    targetTileId: requiredString(dto.targetTileId, "targetTileId"),
+    gameSessionId: requiredString(dto.gameSessionId ?? fallback.gameSessionId, "gameSessionId"),
+    playerId: requiredString(dto.playerId ?? fallback.playerId, "playerId"),
+    pieceId: requiredString(dto.pieceId ?? fallback.pieceId, "pieceId"),
+    sourceTileId: requiredString(dto.sourceTileId ?? fallback.sourceTileId, "sourceTileId"),
+    targetTileId: requiredString(dto.targetTileId ?? fallback.targetTileId, "targetTileId"),
     categoryId: requiredString(dto.categoryId, "categoryId"),
     categoryName: dto.categoryName ?? null,
     questionText: requiredString(dto.questionText, "questionText"),
@@ -92,7 +111,7 @@ export function mapGameplayAnswerOption(dto: GameplayAnswerOptionDto): GameplayA
   }
 
   return {
-    id: requiredString(dto.id, "answer option id"),
+    id: requiredString(dto.id ?? dto.answerId, "answer option id"),
     text: requiredString(dto.text, "answer option text"),
   };
 }
@@ -116,8 +135,8 @@ export function mapQuestionAttemptEvent(dto: QuestionAttemptEventDto): QuestionA
   };
 }
 
-export function mapConquestResult(dto: ConquestResultDto): ConquestResult {
-  const resultStatus = dto.resultStatus;
+export function mapConquestResult(dto: ConquestResultDto, fallback: ConquestResultFallback = {}): ConquestResult {
+  const resultStatus = dto.resultStatus ?? dto.status;
   if (!resultStatus || !resolvedStatuses.has(resultStatus)) {
     throw new Error("Conquest result response must be resolved.");
   }
@@ -127,14 +146,14 @@ export function mapConquestResult(dto: ConquestResultDto): ConquestResult {
 
   return {
     questionAttemptId: requiredString(dto.questionAttemptId, "questionAttemptId"),
-    gameSessionId: requiredString(dto.gameSessionId ?? dto.session?.id ?? dto.session?.sessionId, "gameSessionId"),
+    gameSessionId: requiredString(dto.gameSessionId ?? dto.session?.id ?? dto.session?.sessionId ?? fallback.gameSessionId, "gameSessionId"),
     resultStatus: resultStatus as ResolvedQuestionAttemptStatus,
-    isCorrect: Boolean(dto.isCorrect),
-    pieceId: requiredString(dto.pieceId, "pieceId"),
-    sourceTileId: requiredString(dto.sourceTileId, "sourceTileId"),
-    targetTileId: requiredString(dto.targetTileId, "targetTileId"),
-    currentTileId: requiredString(dto.currentTileId, "currentTileId"),
-    ownerPlayerId: dto.ownerPlayerId ?? null,
+    isCorrect: Boolean(dto.isCorrect ?? dto.wasAnswerCorrect),
+    pieceId: requiredString(dto.pieceId ?? fallback.pieceId, "pieceId"),
+    sourceTileId: requiredString(dto.sourceTileId ?? fallback.sourceTileId, "sourceTileId"),
+    targetTileId: requiredString(dto.targetTileId ?? fallback.targetTileId, "targetTileId"),
+    currentTileId: requiredString(dto.currentTileId ?? dto.pieceTileId, "currentTileId"),
+    ownerPlayerId: dto.ownerPlayerId ?? dto.updatedOwnerPlayerId ?? null,
     nextTurnPlayerId: dto.nextTurnPlayerId ?? null,
     turnNumber: dto.turnNumber,
     session: dto.session ? mapGameSession(dto.session) : null,
@@ -147,4 +166,3 @@ function requiredString(value: unknown, field: string): string {
   }
   return value;
 }
-
