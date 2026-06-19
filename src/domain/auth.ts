@@ -19,6 +19,8 @@ export type AuthError = {
   displayMode: "toast" | "modal";
 };
 
+export type UserRole = "Player" | "Moderator" | "Admin";
+
 export type LoadingState = {
   isLoading: boolean;
   operation:
@@ -34,6 +36,15 @@ export type LoadingState = {
     | "startConquest"
     | "submitConquest"
     | "reconnectGame"
+    | "listCategories"
+    | "createCategory"
+    | "updateCategory"
+    | "deleteCategory"
+    | "listQuestions"
+    | "readQuestion"
+    | "createQuestion"
+    | "updateQuestion"
+    | "deleteQuestion"
     | null;
 };
 
@@ -127,7 +138,49 @@ export function getUserIdFromJwt(accessToken: string): string | null {
   return userId ? userId.trim() : null;
 }
 
-function parseJwtPayload(accessToken: string): Record<string, unknown> | null {
+export function getUserRoleFromJwt(accessToken: string | null): UserRole {
+  if (!accessToken) {
+    return "Player";
+  }
+
+  const parsed = parseJwtPayload(accessToken);
+  if (!parsed) {
+    return "Player";
+  }
+
+  return getHighestRecognizedRole(extractRoleClaimValues(parsed));
+}
+
+export function getHighestRecognizedRole(values: unknown[]): UserRole {
+  const normalized = values
+    .flatMap(flattenRoleClaimValue)
+    .filter((value): value is string => typeof value === "string")
+    .flatMap((value) => value.split(/[,\s]+/))
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+
+  if (normalized.includes("admin") || normalized.includes("administrator")) {
+    return "Admin";
+  }
+  if (normalized.includes("moderator")) {
+    return "Moderator";
+  }
+  return "Player";
+}
+
+export function canAccessQuestionBank(role: UserRole): boolean {
+  return role === "Admin" || role === "Moderator";
+}
+
+export function canManageCategories(role: UserRole): boolean {
+  return role === "Admin";
+}
+
+export function getDefaultAuthenticatedPath(accessToken: string | null): string {
+  return canAccessQuestionBank(getUserRoleFromJwt(accessToken)) ? "/admin/question-bank" : "/lobby";
+}
+
+export function parseJwtPayload(accessToken: string): Record<string, unknown> | null {
   const [, payload] = accessToken.split(".");
   if (!payload) {
     return null;
@@ -140,4 +193,33 @@ function parseJwtPayload(accessToken: string): Record<string, unknown> | null {
   } catch {
     return null;
   }
+}
+
+function extractRoleClaimValues(parsed: Record<string, unknown>): unknown[] {
+  return [
+    parsed.role,
+    parsed.roles,
+    parsed.Role,
+    parsed.Roles,
+    parsed.authority,
+    parsed.authorities,
+    parsed.permissions,
+    parsed.Permission,
+    parsed.Permissions,
+    parsed["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"],
+    parsed["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role"],
+    parsed["http://schemas.microsoft.com/ws/2008/06/identity/claims/groupsid"],
+  ];
+}
+
+function flattenRoleClaimValue(value: unknown): unknown[] {
+  if (Array.isArray(value)) {
+    return value.flatMap(flattenRoleClaimValue);
+  }
+
+  if (value && typeof value === "object") {
+    return Object.values(value as Record<string, unknown>).flatMap(flattenRoleClaimValue);
+  }
+
+  return [value];
 }

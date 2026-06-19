@@ -2,6 +2,7 @@ export type ProblemDetails = {
   title?: string;
   detail?: string;
   status?: number;
+  code?: string;
   traceId?: string;
 };
 
@@ -62,11 +63,56 @@ export async function requestJson<TResponse, TBody = unknown>(
   return (await response.json()) as TResponse;
 }
 
+export async function requestNoContent<TBody = unknown>(
+  url: string,
+  options: RequestJsonOptions<TBody> = {},
+): Promise<void> {
+  const execute = () =>
+    fetch(url, {
+      method: options.method ?? "GET",
+      headers: options.body
+        ? { "Content-Type": "application/json", ...(options.headers ?? {}) }
+        : options.headers,
+      credentials: options.credentials,
+      body: options.body ? JSON.stringify(options.body) : undefined,
+    });
+
+  let response: Response;
+  try {
+    response = await execute();
+  } catch (error) {
+    if (options.retryOnNetworkError) {
+      response = await execute();
+    } else {
+      throw error;
+    }
+  }
+
+  if (!response.ok) {
+    throw new HttpError(response.status, await readProblem(response), response.statusText);
+  }
+}
+
 export async function authenticatedRequestJson<TResponse, TBody = unknown>(
   url: string,
   options: AuthenticatedRequestJsonOptions<TBody>,
 ): Promise<TResponse> {
   return requestJson<TResponse, TBody>(url, {
+    ...options,
+    credentials: "omit",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${options.accessToken}`,
+      ...(options.headers ?? {}),
+    },
+  });
+}
+
+export async function authenticatedRequestNoContent<TBody = unknown>(
+  url: string,
+  options: AuthenticatedRequestJsonOptions<TBody>,
+): Promise<void> {
+  return requestNoContent<TBody>(url, {
     ...options,
     credentials: "omit",
     headers: {

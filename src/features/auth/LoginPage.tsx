@@ -1,12 +1,13 @@
 import { Navigate } from "react-router-dom";
+import { getDefaultAuthenticatedPath } from "../../domain/auth";
 import { LoginForm } from "./LoginForm";
 import { useAuthSession } from "../../hooks/useAuthSession";
 
 export function LoginPage() {
-  const { isAuthenticated } = useAuthSession();
+  const { accessToken, isAuthenticated } = useAuthSession();
 
   if (isAuthenticated) {
-    return <Navigate to="/lobby" replace />;
+    return <Navigate to={getDefaultAuthenticatedPath(accessToken)} replace />;
   }
 
   return (

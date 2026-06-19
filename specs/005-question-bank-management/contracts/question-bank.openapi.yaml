@@ -1,0 +1,452 @@
+openapi: 3.0.3
+info:
+  title: Knowledge Mayhem Question Bank Management API
+  version: 0.1.0
+  description: Frontend planning contract for role-protected category and question bank management.
+servers:
+  - url: '{apiBaseUrl}'
+    variables:
+      apiBaseUrl:
+        default: https://localhost:5001
+security:
+  - bearerAuth: []
+paths:
+  /api/question-bank/categories:
+    get:
+      summary: List categories visible to authenticated users
+      operationId: listCategories
+      responses:
+        '200':
+          description: Categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CategoryResponse'
+        '401':
+          description: Authentication required
+    post:
+      summary: Create a category
+      operationId: createCategory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCategoryRequest'
+      responses:
+        '201':
+          description: Created category
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '401':
+          description: Authentication required
+        '403':
+          description: Admin role required
+        '409':
+          description: Duplicate category or stale/conflicting change
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/question-bank/categories/{categoryId}:
+    put:
+      summary: Update a category
+      operationId: updateCategory
+      parameters:
+        - $ref: '#/components/parameters/CategoryId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCategoryRequest'
+      responses:
+        '200':
+          description: Updated category
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: Admin role required
+        '404':
+          description: Category not found
+        '409':
+          description: Duplicate category or stale/conflicting change
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    delete:
+      summary: Soft-delete a category
+      operationId: deleteCategory
+      parameters:
+        - $ref: '#/components/parameters/CategoryId'
+      responses:
+        '200':
+          description: Deactivated category
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+        '403':
+          description: Admin role required
+        '404':
+          description: Category not found
+        '409':
+          description: Stale/conflicting change
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/question-bank/questions:
+    post:
+      summary: Create a management question with answers
+      operationId: createQuestion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateQuestionRequest'
+      responses:
+        '201':
+          description: Created question
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionManagementItemResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: Moderator or admin role required
+        '409':
+          description: Conflicting change
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/question-bank/questions/{questionId}:
+    get:
+      summary: Read a single question with public answer shape
+      operationId: getQuestion
+      parameters:
+        - $ref: '#/components/parameters/QuestionId'
+      responses:
+        '200':
+          description: Question without answer correctness
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionResponse'
+        '401':
+          description: Authentication required
+        '404':
+          description: Question not found
+    put:
+      summary: Update a management question and replace answers
+      operationId: updateQuestion
+      parameters:
+        - $ref: '#/components/parameters/QuestionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateQuestionRequest'
+      responses:
+        '200':
+          description: Updated question
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionManagementItemResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: Moderator or admin role required
+        '404':
+          description: Question not found
+        '409':
+          description: Stale/conflicting change
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    delete:
+      summary: Soft-delete a question
+      operationId: deleteQuestion
+      parameters:
+        - $ref: '#/components/parameters/QuestionId'
+      responses:
+        '200':
+          description: Deactivated question
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionManagementItemResponse'
+        '403':
+          description: Moderator or admin role required
+        '404':
+          description: Question not found
+        '409':
+          description: Stale/conflicting change
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  /api/question-bank/management/questions:
+    get:
+      summary: List management questions with pagination and filters
+      operationId: getManagementQuestions
+      parameters:
+        - name: pageNumber
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: isActive
+          in: query
+          schema:
+            type: boolean
+        - name: text
+          in: query
+          schema:
+            type: string
+        - name: orderBy
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paged management questions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedQuestionManagementResponse'
+        '400':
+          description: Invalid paging or ordering
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: Moderator or admin role required
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    CategoryId:
+      name: categoryId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    QuestionId:
+      name: questionId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    CreateCategoryRequest:
+      type: object
+      required: [name, description]
+      properties:
+        name:
+          type: string
+          maxLength: 40
+        description:
+          type: string
+          maxLength: 300
+    UpdateCategoryRequest:
+      allOf:
+        - $ref: '#/components/schemas/CreateCategoryRequest'
+    CategoryResponse:
+      type: object
+      required: [id, name, description, createdAt, isActive]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        isActive:
+          type: boolean
+        deletedAt:
+          type: string
+          format: date-time
+          nullable: true
+    QuestionAnswerWriteRequest:
+      type: object
+      required: [text, isCorrect]
+      properties:
+        text:
+          type: string
+          maxLength: 1000
+        isCorrect:
+          type: boolean
+    CreateQuestionRequest:
+      type: object
+      required: [categoryId, text, answers]
+      properties:
+        categoryId:
+          type: string
+          format: uuid
+        text:
+          type: string
+          maxLength: 1000
+        answers:
+          type: array
+          minItems: 4
+          maxItems: 4
+          items:
+            $ref: '#/components/schemas/QuestionAnswerWriteRequest'
+    UpdateQuestionRequest:
+      allOf:
+        - $ref: '#/components/schemas/CreateQuestionRequest'
+    QuestionAnswerResponse:
+      type: object
+      required: [id, text]
+      properties:
+        id:
+          type: string
+          format: uuid
+        text:
+          type: string
+    QuestionManagementAnswerResponse:
+      allOf:
+        - $ref: '#/components/schemas/QuestionAnswerResponse'
+        - type: object
+          required: [isCorrect]
+          properties:
+            isCorrect:
+              type: boolean
+    QuestionResponse:
+      type: object
+      required: [id, categoryId, categoryName, text, answers, createdAt, isActive]
+      properties:
+        id:
+          type: string
+          format: uuid
+        categoryId:
+          type: string
+          format: uuid
+        categoryName:
+          type: string
+        text:
+          type: string
+        answers:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionAnswerResponse'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        isActive:
+          type: boolean
+    QuestionManagementItemResponse:
+      type: object
+      required: [id, categoryId, categoryName, text, isActive, createdAt, answers]
+      properties:
+        id:
+          type: string
+          format: uuid
+        categoryId:
+          type: string
+          format: uuid
+        categoryName:
+          type: string
+        text:
+          type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        answers:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionManagementAnswerResponse'
+    PagedQuestionManagementResponse:
+      type: object
+      required: [items, pageNumber, pageSize, totalCount]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionManagementItemResponse'
+        pageNumber:
+          type: integer
+        pageSize:
+          type: integer
+        totalCount:
+          type: integer
+    ProblemDetails:
+      type: object
+      properties:
+        title:
+          type: string
+        detail:
+          type: string
+        status:
+          type: integer
+        code:
+          type: string
+        traceId:
+          type: string

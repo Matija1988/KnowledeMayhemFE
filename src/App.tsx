@@ -4,9 +4,15 @@ import { LoadingSpinner } from "./components/LoadingSpinner";
 import { ToastProvider } from "./components/ToastProvider";
 import { LoginPage } from "./features/auth/LoginPage";
 import { GameSessionPage } from "./features/game/GameSessionPage";
+import { CategoryListPage } from "./features/questionBank/CategoryListPage";
+import { QuestionBankDashboard } from "./features/questionBank/QuestionBankDashboard";
+import { QuestionBankLayout } from "./features/questionBank/QuestionBankLayout";
+import { QuestionFormPage } from "./features/questionBank/QuestionFormPage";
+import { QuestionListPage } from "./features/questionBank/QuestionListPage";
 import { LobbyLandingPage } from "./features/lobby/LobbyLandingPage";
 import { LobbyRoomPage } from "./features/lobby/LobbyRoomPage";
 import { ProtectedRoute } from "./routes/ProtectedRoute";
+import { RoleProtectedRoute } from "./routes/RoleProtectedRoute";
 
 export function App() {
   return (
@@ -37,6 +43,20 @@ export function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/admin/question-bank"
+          element={
+            <RoleProtectedRoute>
+              <QuestionBankLayout />
+            </RoleProtectedRoute>
+          }
+        >
+          <Route index element={<QuestionBankDashboard />} />
+          <Route path="categories" element={<CategoryListPage />} />
+          <Route path="questions" element={<QuestionListPage />} />
+          <Route path="questions/new" element={<QuestionFormPage />} />
+          <Route path="questions/:questionId/edit" element={<QuestionFormPage />} />
+        </Route>
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
       <LoadingSpinner />

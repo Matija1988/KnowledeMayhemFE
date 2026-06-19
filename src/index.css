@@ -30,13 +30,15 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,
+textarea:focus-visible,
 a:focus-visible,
 [role="gridcell"]:focus-visible {
   outline: 3px solid var(--action-primary);
@@ -71,6 +73,17 @@ a:focus-visible,
   padding: 0.55rem 0.75rem;
 }
 
+.ui-textarea {
+  min-height: 6rem;
+  resize: vertical;
+}
+
+.ui-checkbox {
+  width: 1.125rem;
+  height: 1.125rem;
+  accent-color: var(--action-primary);
+}
+
 select.ui-input {
   border-radius: 8px;
   background-color: var(--bg-elevated);
@@ -93,6 +106,10 @@ select.ui-input option:checked {
 }
 
 .ui-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
   min-height: 2.5rem;
   border: 1px solid transparent;
   border-radius: 8px;
@@ -100,6 +117,7 @@ select.ui-input option:checked {
   color: white;
   cursor: pointer;
   font-weight: 700;
+  text-decoration: none;
 }
 
 .ui-button--primary {
@@ -160,6 +178,79 @@ select.ui-input option:checked {
   z-index: 1000;
 }
 
+.ui-spinner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+}
+
+.ui-spinner__mark {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid var(--border-default);
+  border-top-color: var(--action-primary-hover);
+  border-radius: 999px;
+  animation: ui-spin 0.8s linear infinite;
+}
+
+@keyframes ui-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.ui-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.ui-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ui-table caption {
+  text-align: left;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.ui-table th,
+.ui-table td {
+  border-bottom: 1px solid var(--border-default);
+  padding: 0.65rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.ui-table th {
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.ui-empty-state {
+  border: 1px dashed var(--border-default);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  padding: 1rem;
+}
+
+.ui-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.ui-pagination label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+}
+
 .toast {
   position: fixed;
   right: 1rem;
@@ -193,6 +284,130 @@ select.ui-input option:checked {
   border: 1px solid var(--border-default);
   border-radius: 8px;
   padding: 1rem;
+}
+
+.question-bank-page {
+  min-height: 100vh;
+  width: min(1180px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 1.5rem 0 2rem;
+}
+
+.question-bank-header,
+.question-bank-section__header,
+.question-bank-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.question-bank-header {
+  margin-bottom: 1rem;
+}
+
+.question-bank-header h1,
+.question-bank-header p,
+.question-bank-section h2,
+.question-bank-section h3,
+.question-bank-section p,
+.question-bank-grid h2,
+.question-bank-grid p {
+  margin-top: 0;
+}
+
+.question-bank-header p,
+.question-bank-grid p,
+.question-bank-row p {
+  color: var(--text-secondary);
+}
+
+.question-bank-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.question-bank-nav a {
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  color: var(--text-primary);
+  padding: 0.45rem 0.7rem;
+  text-decoration: none;
+}
+
+.question-bank-nav a.active {
+  border-color: var(--action-primary-hover);
+  background: rgba(37, 99, 235, 0.22);
+}
+
+.question-bank-grid,
+.question-bank-list,
+.question-bank-section {
+  display: grid;
+  gap: 1rem;
+}
+
+.question-bank-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+}
+
+.question-bank-form,
+.answer-editor,
+.question-filters {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.question-filters {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  align-items: end;
+}
+
+.question-filters label {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--text-secondary);
+}
+
+.question-bank-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.answer-editor {
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  padding: 0.85rem;
+}
+
+.answer-editor legend {
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.answer-editor-row {
+  display: grid;
+  grid-template-columns: 7rem minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.answer-editor-correct {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  color: var(--text-secondary);
+}
+
+.question-bank-warning {
+  border: 1px solid #d97706;
+  border-radius: 8px;
+  background: rgba(217, 119, 6, 0.14);
+  padding: 0.75rem;
 }
 
 /* Auth page baseline */
@@ -655,6 +870,17 @@ button[type="submit"]:disabled {
 }
 
 @media (max-width: 760px) {
+  .question-bank-header,
+  .question-bank-section__header,
+  .question-bank-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .answer-editor-row {
+    grid-template-columns: 1fr;
+  }
+
   .game-layout {
     grid-template-columns: 1fr;
   }

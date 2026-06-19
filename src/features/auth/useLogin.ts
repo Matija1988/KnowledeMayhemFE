@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { login as loginRequest, normalizeIdentityError } from "../../api/identityApi";
 import {
+  getDefaultAuthenticatedPath,
   hasLoginFieldErrors,
   normalizeCredentials,
   validateLoginCredentials,
@@ -36,7 +37,7 @@ export function useLogin() {
     try {
       const response = await loginRequest(normalizeCredentials(credentials));
       loginSession(response.accessToken);
-      navigate("/lobby", { replace: true });
+      navigate(getDefaultAuthenticatedPath(response.accessToken), { replace: true });
       return true;
     } catch (error) {
       showError(normalizeIdentityError(error));

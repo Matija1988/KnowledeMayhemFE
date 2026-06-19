@@ -19,4 +19,25 @@ describe("LoginPage", () => {
 
     expect(screen.getByText("Lobby page")).toBeInTheDocument();
   });
+
+  it("redirects signed-in admins to question bank management", () => {
+    useAuthStore.getState().login(jwtWithPayload({ role: "Admin" }));
+
+    render(
+      <MemoryRouter initialEntries={["/login"]}>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/lobby" element={<p>Lobby page</p>} />
+          <Route path="/admin/question-bank" element={<p>Question bank page</p>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("Question bank page")).toBeInTheDocument();
+  });
 });
+
+function jwtWithPayload(payload: Record<string, unknown>): string {
+  const encodedPayload = btoa(JSON.stringify(payload)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return `header.${encodedPayload}.signature`;
+}

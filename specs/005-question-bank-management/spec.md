@@ -8,6 +8,12 @@
 
 **Input**: User description: "FE feature implementation. Feature 5: Question Bank Management for moderators and admins, including role-based post-login redirect, protected management routes, category CRUD for admins, question CRUD for admins and moderators, answer editing with exactly four answers and exactly one correct answer, paginated and filtered question list, soft-delete behavior, centralized loading and error handling, dark blue/white management UI, accessibility, and tests."
 
+## Clarifications
+
+### Session 2026-06-18
+
+- Q: How should category or question saves handle concurrent edits from another staff user? -> A: When the backend reports stale or conflicting data, block save, show a conflict message, and require reload.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Reach The Right Post-Login Area (Priority: P1)
@@ -37,9 +43,9 @@ Admins can view, create, edit, and deactivate categories used to organize gamepl
 
 **Acceptance Scenarios**:
 
-1. **Given** an admin is in category management, **When** they enter a unique required name and optional description, **Then** the category is created and appears in the category list.
+1. **Given** an admin is in category management, **When** they enter a unique required name and required description, **Then** the category is created and appears in the category list.
 2. **Given** an admin edits an existing category, **When** valid changes are saved, **Then** the list reflects the updated category details.
-3. **Given** an admin deactivates a category after confirmation, **When** the action completes, **Then** the category is shown as inactive/deleted and is hidden from selectable active-category defaults.
+3. **Given** an admin deactivates a category after confirmation, **When** the action completes, **Then** the category is shown as inactive and is hidden from selectable active-category defaults.
 4. **Given** a moderator views categories, **When** they open category management, **Then** they can read categories but cannot create, update, or deactivate them.
 
 ---
@@ -58,7 +64,7 @@ Moderators and admins can create and edit questions with exactly four answers an
 2. **Given** the question form has fewer or more than four answers, **When** the user attempts to save, **Then** save is blocked with field-level validation.
 3. **Given** no answer or more than one answer is marked correct, **When** the user attempts to save, **Then** save is blocked until exactly one answer is marked correct.
 4. **Given** a valid category, question text, four answer texts, and one correct answer, **When** the user saves, **Then** the question is created or updated with its full answer set.
-5. **Given** a question is deactivated after confirmation, **When** the action completes, **Then** it is visibly inactive/deleted and omitted from default active lists.
+5. **Given** a question is deactivated after confirmation, **When** the action completes, **Then** it is visibly inactive and omitted from default active lists.
 
 ---
 
@@ -74,7 +80,7 @@ Moderators and admins can browse questions with pagination, filtering, search, o
 
 1. **Given** the question bank contains more questions than one page, **When** the user changes pages or page size, **Then** the list shows the requested result page and keeps controls understandable.
 2. **Given** category, active-status, and text filters are applied, **When** the list refreshes, **Then** only matching questions are displayed.
-3. **Given** questions have active, inactive, or deleted states, **When** the list renders, **Then** each state is visible without relying on color alone.
+3. **Given** questions have active or inactive states, **When** the list renders, **Then** each state is visible without relying on color alone.
 4. **Given** a question row is displayed, **When** the user chooses edit or deactivate, **Then** the appropriate protected workflow starts.
 
 ### Edge Cases
@@ -86,6 +92,7 @@ Moderators and admins can browse questions with pagination, filtering, search, o
 - A category is inactive or soft-deleted; it remains visible where history requires it but cannot be selected for new questions by default.
 - A question references a category that later becomes inactive; the existing question can still be reviewed, but new or changed questions cannot select inactive categories.
 - A user navigates away with unsaved form changes; the user is warned before losing edits.
+- A category or question is changed by another staff user before the current user saves; when the backend reports a stale or conflicting save, the save is blocked, a conflict message is shown, and the user must reload the latest content before retrying.
 - Loading, saving, or deleting fails; the user sees a centralized error message and no local state is falsely committed.
 - The list is empty after filters; the UI explains that no questions match and offers a clear path to adjust filters or create a question if allowed.
 - Keyboard-only and screen-reader users can navigate forms, choose the correct answer, understand validation errors, operate pagination, and complete confirmation dialogs.
@@ -108,15 +115,16 @@ Moderators and admins can browse questions with pagination, filtering, search, o
 - **FR-012**: The answer editor MUST always present exactly four answer rows and MUST prevent adding a fifth answer or removing below four answers.
 - **FR-013**: Correct-answer selection MUST behave as a single-choice selection so only one answer can be correct at a time.
 - **FR-014**: The question list MUST support pagination, page-size selection, category filtering, active-status filtering, optional text search, and created-date ordering.
-- **FR-015**: The question list MUST display question text, category, active/deleted status, answer count, correct-answer indicator, created date, updated date, and available actions.
-- **FR-016**: Soft-delete actions MUST require confirmation and MUST show inactive/deleted state clearly after completion.
-- **FR-017**: Default lists MUST hide soft-deleted items unless the user chooses a filter that includes inactive or deleted items.
+- **FR-015**: The question list MUST display question text, category, active/inactive status, answer count, correct-answer indicator, created date, updated date, and available actions.
+- **FR-016**: Soft-delete actions MUST require confirmation and MUST show inactive state clearly after completion.
+- **FR-017**: Default lists MUST hide inactive or soft-deleted items unless the user chooses a filter that includes inactive items supported by the backend.
 - **FR-018**: The system MUST use shared loading behavior for loading, creating, updating, and deleting categories and questions.
 - **FR-019**: The system MUST prevent duplicate submits while create, update, or delete actions are pending.
 - **FR-020**: Errors MUST be presented through centralized user-facing error handling, with blocking modals for permission denial, delete confirmation, and unsaved-change warnings where appropriate.
-- **FR-021**: All management UI controls MUST use the shared dark blue and white visual system and MUST NOT rely on browser-default styling.
-- **FR-022**: All form controls MUST have labels, validation errors MUST be associated with fields, tables MUST have meaningful headers, confirmation dialogs MUST manage focus, and state indicators MUST NOT rely on color alone.
-- **FR-023**: Gameplay question answering MUST remain separate from management question review, and management data MUST NOT expose correct answers inside gameplay before answer submission.
+- **FR-021**: The system MUST block stale category or question saves when the backend reports a stale or conflicting change, show a conflict message, and require reloading the latest content before retrying.
+- **FR-022**: All management UI controls MUST use the shared dark blue and white visual system and MUST NOT rely on browser-default styling.
+- **FR-023**: All form controls MUST have labels, validation errors MUST be associated with fields, tables MUST have meaningful headers, confirmation dialogs MUST manage focus, and state indicators MUST NOT rely on color alone.
+- **FR-024**: Gameplay question answering MUST remain separate from management question review, and management data MUST NOT expose correct answers inside gameplay before answer submission.
 
 ### Key Entities
 
@@ -139,7 +147,8 @@ Moderators and admins can browse questions with pagination, filtering, search, o
 - **SC-007**: 100% of destructive or deactivating actions require confirmation before completion.
 - **SC-008**: The primary category and question management flows can be completed with keyboard-only input, visible focus, labeled controls, and understandable validation feedback.
 - **SC-009**: Loading and pending feedback appears for create, update, delete, and list-loading actions within 500 ms of action start.
-- **SC-010**: At least 95% of tested staff users can distinguish active, inactive, deleted, and correct-answer states without relying on color alone.
+- **SC-010**: 100% of active, inactive, and correct-answer states shown in management UI include a text label or icon with an accessible name in addition to color.
+- **SC-011**: 100% of backend-reported stale category or question save conflicts are blocked in the UI without overwriting newer staff changes.
 
 ## Assumptions
 
@@ -147,5 +156,5 @@ Moderators and admins can browse questions with pagination, filtering, search, o
 - Admins have full category and question management rights; moderators have question management rights and category read access only.
 - Soft delete means a category or question becomes inactive and receives a deletion timestamp rather than being permanently removed.
 - Restore of soft-deleted entities is out of scope unless already supported by the backend.
-- Default management lists show active content first and hide soft-deleted content unless filters include inactive or deleted content.
+- Default management lists show active content first and hide inactive or soft-deleted content unless filters include inactive content supported by the backend.
 - Public question browsing, bulk edit, import/export, difficulty management, media attachments, audit-log viewing, and separate moderator dashboard design are out of scope.

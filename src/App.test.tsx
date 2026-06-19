@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { App } from "./App";
 import { useAuthStore } from "./stores/authStore";
+import { adminToken, playerToken } from "./tests/fixtures/questionBankFixtures";
 
 describe("App routes", () => {
   it("protects the game route", async () => {
@@ -19,6 +20,24 @@ describe("App routes", () => {
     render(<App />);
 
     expect(await screen.findByText(/game session/i)).toBeInTheDocument();
+  });
+
+  it("protects management routes by role", async () => {
+    useAuthStore.getState().login(playerToken);
+    window.history.pushState({}, "", "/admin/question-bank/questions");
+
+    render(<App />);
+
+    expect((await screen.findAllByRole("heading", { name: /permission denied/i })).length).toBeGreaterThan(0);
+  });
+
+  it("renders management routes for admins", async () => {
+    useAuthStore.getState().login(adminToken);
+    window.history.pushState({}, "", "/admin/question-bank");
+
+    render(<App />);
+
+    expect(await screen.findByRole("heading", { name: "Question bank" })).toBeInTheDocument();
   });
 });
 
