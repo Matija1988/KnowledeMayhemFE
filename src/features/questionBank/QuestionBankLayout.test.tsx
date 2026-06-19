@@ -20,6 +20,7 @@ describe("QuestionBankLayout", () => {
 
     expect(screen.getByRole("heading", { name: "Question bank" })).toBeInTheDocument();
     expect(screen.getByText("Admin")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Player area" })).toHaveAttribute("href", "/lobby");
     expect(screen.getByRole("link", { name: "Questions" })).toBeInTheDocument();
   });
 });
