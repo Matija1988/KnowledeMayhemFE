@@ -83,4 +83,26 @@ describe("conquestMappers", () => {
       pieceId: "piece-1",
     });
   });
+
+  it("maps realtime backend conquest success events that use from/to tile ids", () => {
+    const result = mapConquestResult({
+      questionAttemptId: "attempt-1",
+      gameSessionId: "session-1",
+      playerId: "player-1",
+      pieceId: "piece-1",
+      fromTileId: "tile-0-0",
+      toTileId: "tile-1-0",
+      ownerPlayerId: "player-1",
+      turnNumber: 2,
+    });
+
+    expect(result).toMatchObject({
+      resultStatus: "Succeeded",
+      isCorrect: true,
+      sourceTileId: "tile-0-0",
+      targetTileId: "tile-1-0",
+      currentTileId: "tile-1-0",
+      ownerPlayerId: "player-1",
+    });
+  });
 });

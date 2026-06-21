@@ -18,12 +18,12 @@ export const gameEventNames = {
   turnAdvanced: "GameTurnAdvancedEvent",
   completed: "GameCompletedEvent",
   cancelled: "GameCancelledEvent",
-  conquestAttemptStarted: "ConquestAttemptStarted",
-  questionIssued: "QuestionIssued",
-  answerSubmitted: "AnswerSubmitted",
-  conquestSucceeded: "ConquestSucceeded",
-  conquestFailed: "ConquestFailed",
-  conquestExpired: "ConquestExpired",
+  conquestAttemptStarted: "GameConquestAttemptStartedEvent",
+  questionIssued: "GameQuestionIssuedEvent",
+  answerSubmitted: "GameAnswerSubmittedEvent",
+  conquestSucceeded: "GameConquestSucceededEvent",
+  conquestFailed: "GameConquestFailedEvent",
+  conquestExpired: "GameConquestExpiredEvent",
 } as const;
 
 export type GameMoveExecutedEventDto = {
@@ -127,6 +127,9 @@ export function isQuestionAttemptEvent(payload: unknown): payload is QuestionAtt
     payload !== null &&
     typeof (payload as QuestionAttemptEventDto).questionAttemptId === "string" &&
     typeof (payload as QuestionAttemptEventDto).status === "string" &&
+    typeof (payload as QuestionAttemptEventDto).pieceId === "string" &&
+    typeof (payload as QuestionAttemptEventDto).sourceTileId === "string" &&
+    typeof (payload as QuestionAttemptEventDto).targetTileId === "string" &&
     !("resultStatus" in payload)
   );
 }
@@ -136,7 +139,11 @@ export function isConquestResultEvent(payload: unknown): payload is ConquestResu
     typeof payload === "object" &&
     payload !== null &&
     typeof (payload as ConquestResultDto).questionAttemptId === "string" &&
-    typeof (payload as ConquestResultDto).resultStatus === "string" &&
-    typeof (payload as ConquestResultDto).turnNumber === "number"
+    typeof (payload as ConquestResultDto).turnNumber === "number" &&
+    (
+      typeof (payload as ConquestResultDto).resultStatus === "string" ||
+      typeof (payload as ConquestResultDto).toTileId === "string" ||
+      typeof (payload as ConquestResultDto).targetTileId === "string"
+    )
   );
 }

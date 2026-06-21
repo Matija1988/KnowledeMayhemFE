@@ -37,9 +37,21 @@ describe("gameEvents", () => {
   });
 
   it("maps and guards conquest realtime payloads", () => {
-    expect(gameEventNames.questionIssued).toBe("QuestionIssued");
+    expect(gameEventNames.questionIssued).toBe("GameQuestionIssuedEvent");
     expect(isGameplayQuestionEvent(gameplayQuestionFixture())).toBe(true);
     expect(isConquestResultEvent(conquestResultFixture())).toBe(true);
+    expect(
+      isConquestResultEvent({
+        gameSessionId: "session-1",
+        questionAttemptId: "attempt-1",
+        playerId: "player-1",
+        pieceId: "piece-1",
+        fromTileId: "tile-0-0",
+        toTileId: "tile-1-0",
+        ownerPlayerId: "player-1",
+        turnNumber: 2,
+      }),
+    ).toBe(true);
     expect(toGameplayQuestionEvent(gameplayQuestionFixture()).answerOptions).toHaveLength(4);
     expect(toConquestResultEvent(conquestResultFixture()).turnNumber).toBe(2);
   });

@@ -38,8 +38,17 @@ describe("gameHub", () => {
       turnNumber: 2,
       reason: "Move",
     });
-    callbacks.get("QuestionIssued")?.(gameplayQuestionFixture());
-    callbacks.get("ConquestSucceeded")?.(conquestResultFixture());
+    callbacks.get("GameQuestionIssuedEvent")?.(gameplayQuestionFixture());
+    callbacks.get("GameConquestSucceededEvent")?.({
+      gameSessionId: "session-1",
+      questionAttemptId: "attempt-1",
+      playerId: "player-1",
+      pieceId: "piece-1",
+      fromTileId: "tile-0-0",
+      toTileId: "tile-1-0",
+      ownerPlayerId: "player-1",
+      turnNumber: 2,
+    });
 
     expect(handlers.onSession).toHaveBeenCalledWith(expect.objectContaining({ id: "session-1" }));
     expect(handlers.onActionResult).toHaveBeenCalledWith(expect.objectContaining({ turn: expect.objectContaining({ turnNumber: 2 }) }));
@@ -47,6 +56,30 @@ describe("gameHub", () => {
     expect(handlers.onGameplayQuestion).toHaveBeenCalledWith(expect.objectContaining({ questionAttemptId: "attempt-1" }));
     expect(handlers.onConquestResult).toHaveBeenCalledWith(expect.objectContaining({ resultStatus: "Succeeded" }));
     expect(connection.onreconnecting).toHaveBeenCalled();
+  });
+
+  it("keeps legacy conquest event aliases wired while supporting backend event names", () => {
+    const callbacks = new Map<string, (...args: unknown[]) => void>();
+    const connection = {
+      on: vi.fn((name: string, callback: (...args: unknown[]) => void) => callbacks.set(name, callback)),
+    };
+    const handlers = {
+      onSession: vi.fn(),
+      onActionResult: vi.fn(),
+      onMoveExecuted: vi.fn(),
+      onTileOwnershipChanged: vi.fn(),
+      onTurnAdvanced: vi.fn(),
+      onGameplayQuestion: vi.fn(),
+      onQuestionAttempt: vi.fn(),
+      onConquestResult: vi.fn(),
+      onPatchNeedsRefresh: vi.fn(),
+      onConnectionStatus: vi.fn(),
+    };
+
+    registerGameHubHandlers(connection, handlers);
+
+    expect(callbacks.has("GameConquestSucceededEvent")).toBe(true);
+    expect(callbacks.has("ConquestSucceeded")).toBe(true);
   });
 
   it("subscribes to a game session update group", async () => {

@@ -53,7 +53,10 @@ export type ConquestResultDto = {
   status?: QuestionAttemptStatus;
   isCorrect?: boolean;
   wasAnswerCorrect?: boolean;
+  playerId?: string;
   pieceId?: string;
+  fromTileId?: string;
+  toTileId?: string;
   sourceTileId?: string;
   targetTileId?: string;
   currentTileId?: string;
@@ -136,7 +139,7 @@ export function mapQuestionAttemptEvent(dto: QuestionAttemptEventDto): QuestionA
 }
 
 export function mapConquestResult(dto: ConquestResultDto, fallback: ConquestResultFallback = {}): ConquestResult {
-  const resultStatus = dto.resultStatus ?? dto.status;
+  const resultStatus = dto.resultStatus ?? inferConquestResultStatus(dto);
   if (!resultStatus || !resolvedStatuses.has(resultStatus)) {
     throw new Error("Conquest result response must be resolved.");
   }
@@ -148,16 +151,32 @@ export function mapConquestResult(dto: ConquestResultDto, fallback: ConquestResu
     questionAttemptId: requiredString(dto.questionAttemptId, "questionAttemptId"),
     gameSessionId: requiredString(dto.gameSessionId ?? dto.session?.id ?? dto.session?.sessionId ?? fallback.gameSessionId, "gameSessionId"),
     resultStatus: resultStatus as ResolvedQuestionAttemptStatus,
-    isCorrect: Boolean(dto.isCorrect ?? dto.wasAnswerCorrect),
+    isCorrect: Boolean(dto.isCorrect ?? dto.wasAnswerCorrect ?? resultStatus === "Succeeded"),
     pieceId: requiredString(dto.pieceId ?? fallback.pieceId, "pieceId"),
-    sourceTileId: requiredString(dto.sourceTileId ?? fallback.sourceTileId, "sourceTileId"),
-    targetTileId: requiredString(dto.targetTileId ?? fallback.targetTileId, "targetTileId"),
-    currentTileId: requiredString(dto.currentTileId ?? dto.pieceTileId, "currentTileId"),
+    sourceTileId: requiredString(dto.sourceTileId ?? dto.fromTileId ?? fallback.sourceTileId, "sourceTileId"),
+    targetTileId: requiredString(dto.targetTileId ?? dto.toTileId ?? fallback.targetTileId, "targetTileId"),
+    currentTileId: requiredString(dto.currentTileId ?? dto.pieceTileId ?? dto.toTileId ?? dto.sourceTileId ?? dto.fromTileId, "currentTileId"),
     ownerPlayerId: dto.ownerPlayerId ?? dto.updatedOwnerPlayerId ?? null,
     nextTurnPlayerId: dto.nextTurnPlayerId ?? null,
     turnNumber: dto.turnNumber,
     session: dto.session ? mapGameSession(dto.session) : null,
   };
+}
+
+function inferConquestResultStatus(dto: ConquestResultDto): QuestionAttemptStatus | undefined {
+  if (dto.status && dto.status !== "Pending") {
+    return dto.status;
+  }
+
+  if (dto.ownerPlayerId || dto.toTileId) {
+    return "Succeeded";
+  }
+
+  if (dto.targetTileId) {
+    return "Failed";
+  }
+
+  return undefined;
 }
 
 function requiredString(value: unknown, field: string): string {

@@ -65,62 +65,75 @@ export async function joinGameSessionHubGroup(connection: Pick<HubLike, "invoke"
 
 export function registerGameHubHandlers(connection: HubLike, handlers: GameHubHandlers): void {
   const handlePayload = (payload: unknown) => {
-    if (isGameActionResult(payload)) {
-      handlers.onActionResult(toGameActionResultEvent(payload));
-      return;
-    }
-    if (isGameSession(payload)) {
-      handlers.onSession(toGameSessionEvent(payload));
-      return;
-    }
-    if (isConquestResultEvent(payload)) {
-      handlers.onConquestResult?.(toConquestResultEvent(payload));
-      return;
-    }
-    if (isGameplayQuestionEvent(payload)) {
-      handlers.onGameplayQuestion?.(toGameplayQuestionEvent(payload));
-      return;
-    }
-    if (isQuestionAttemptEvent(payload)) {
-      handlers.onQuestionAttempt?.(toQuestionAttemptEvent(payload));
-      return;
-    }
-    if (typeof payload === "object" && payload !== null && "session" in payload && isGameSession(payload.session)) {
-      handlers.onSession(toGameSessionEvent(payload.session));
-      return;
-    }
-    if (isGameMoveExecutedEvent(payload)) {
-      payload.session ? handlers.onSession(toGameSessionEvent(payload.session)) : handlers.onMoveExecuted(payload);
-      return;
-    }
-    if (isGameTileOwnershipChangedEvent(payload)) {
-      payload.session ? handlers.onSession(toGameSessionEvent(payload.session)) : handlers.onTileOwnershipChanged(payload);
-      return;
-    }
-    if (isGameTurnAdvancedEvent(payload)) {
-      if (payload.session) {
+    try {
+      if (isGameActionResult(payload)) {
+        handlers.onActionResult(toGameActionResultEvent(payload));
+        return;
+      }
+      if (isGameSession(payload)) {
+        handlers.onSession(toGameSessionEvent(payload));
+        return;
+      }
+      if (isConquestResultEvent(payload)) {
+        handlers.onConquestResult?.(toConquestResultEvent(payload));
+        return;
+      }
+      if (isGameplayQuestionEvent(payload)) {
+        handlers.onGameplayQuestion?.(toGameplayQuestionEvent(payload));
+        return;
+      }
+      if (isQuestionAttemptEvent(payload)) {
+        handlers.onQuestionAttempt?.(toQuestionAttemptEvent(payload));
+        return;
+      }
+      if (typeof payload === "object" && payload !== null && "session" in payload && isGameSession(payload.session)) {
         handlers.onSession(toGameSessionEvent(payload.session));
         return;
       }
-      handlers.onTurnAdvanced(payload);
+      if (isGameMoveExecutedEvent(payload)) {
+        payload.session ? handlers.onSession(toGameSessionEvent(payload.session)) : handlers.onMoveExecuted(payload);
+        return;
+      }
+      if (isGameTileOwnershipChangedEvent(payload)) {
+        payload.session ? handlers.onSession(toGameSessionEvent(payload.session)) : handlers.onTileOwnershipChanged(payload);
+        return;
+      }
+      if (isGameTurnAdvancedEvent(payload)) {
+        if (payload.session) {
+          handlers.onSession(toGameSessionEvent(payload.session));
+          return;
+        }
+        handlers.onTurnAdvanced(payload);
+        return;
+      }
+    } catch {
+      handlers.onPatchNeedsRefresh();
       return;
     }
     handlers.onPatchNeedsRefresh();
   };
 
-  connection.on(gameEventNames.sessionCreated, handlePayload);
-  connection.on(gameEventNames.started, handlePayload);
-  connection.on(gameEventNames.moveExecuted, handlePayload);
-  connection.on(gameEventNames.tileOwnershipChanged, handlePayload);
-  connection.on(gameEventNames.turnAdvanced, handlePayload);
-  connection.on(gameEventNames.completed, handlePayload);
-  connection.on(gameEventNames.cancelled, handlePayload);
-  connection.on(gameEventNames.conquestAttemptStarted, handlePayload);
-  connection.on(gameEventNames.questionIssued, handlePayload);
-  connection.on(gameEventNames.answerSubmitted, handlePayload);
-  connection.on(gameEventNames.conquestSucceeded, handlePayload);
-  connection.on(gameEventNames.conquestFailed, handlePayload);
-  connection.on(gameEventNames.conquestExpired, handlePayload);
+  [
+    gameEventNames.sessionCreated,
+    gameEventNames.started,
+    gameEventNames.moveExecuted,
+    gameEventNames.tileOwnershipChanged,
+    gameEventNames.turnAdvanced,
+    gameEventNames.completed,
+    gameEventNames.cancelled,
+    gameEventNames.conquestAttemptStarted,
+    "ConquestAttemptStarted",
+    gameEventNames.questionIssued,
+    "QuestionIssued",
+    gameEventNames.answerSubmitted,
+    "AnswerSubmitted",
+    gameEventNames.conquestSucceeded,
+    "ConquestSucceeded",
+    gameEventNames.conquestFailed,
+    "ConquestFailed",
+    gameEventNames.conquestExpired,
+    "ConquestExpired",
+  ].forEach((eventName) => connection.on(eventName, handlePayload));
   connection.onreconnecting?.(() => handlers.onConnectionStatus("reconnecting"));
   connection.onreconnected?.(() => handlers.onConnectionStatus("connected"));
   connection.onclose?.(() => handlers.onConnectionStatus("disconnected"));
