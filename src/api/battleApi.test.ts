@@ -48,6 +48,36 @@ describe("battleApi", () => {
     ).resolves.toMatchObject({ status: "Succeeded" });
   });
 
+  it("maps pending battle answer responses to the next question", async () => {
+    const nextQuestion = {
+      ...battleQuestionFixture({ questionAttemptId: "battle-question-2", progress: { requiredCorrectAnswers: 2, correctAnswers: 1, status: "Pending" } }),
+      attemptId: "battle-1",
+      answerOptions: battleQuestionFixture().answerOptions.map((option) => ({ answerId: option.id, text: option.text })),
+    };
+
+    server.use(
+      http.post("**/api/game-sessions/:gameSessionId/battle-attempts/:battleAttemptId/answers", () => {
+        return HttpResponse.json({
+          attemptKind: "Battle",
+          attemptId: "battle-1",
+          status: "Pending",
+          correctAnswers: 1,
+          requiredCorrectAnswers: 2,
+          nextQuestion,
+        });
+      }),
+    );
+
+    await expect(
+      submitBattleAnswer(
+        "session-1",
+        "battle-1",
+        { questionAttemptId: "battle-question-1", answerId: "answer-1" },
+        { accessToken: "token", resultFallback: { actingPlayerId: "player-1", pieceId: "piece-1", sourceTileId: "tile-0-0", targetTileId: "tile-1-0" } },
+      ),
+    ).resolves.toMatchObject({ questionAttemptId: "battle-question-2", progress: { correctAnswers: 1 } });
+  });
+
   it("surfaces backend problem details", async () => {
     server.use(
       http.post("**/api/game-sessions/:gameSessionId/battle-attempts", () => {

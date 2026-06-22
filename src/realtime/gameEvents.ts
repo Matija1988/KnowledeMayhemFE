@@ -26,12 +26,12 @@ export const gameEventNames = {
   conquestSucceeded: "GameConquestSucceededEvent",
   conquestFailed: "GameConquestFailedEvent",
   conquestExpired: "GameConquestExpiredEvent",
-  battleAttemptStarted: "BattleAttemptStartedEvent",
+  battleAttemptStarted: "BattleStartedEvent",
   battleQuestionIssued: "BattleQuestionIssuedEvent",
   battleProgressUpdated: "BattleProgressUpdatedEvent",
   battleSucceeded: "BattleSucceededEvent",
   battleFailed: "BattleFailedEvent",
-  specialFieldAttemptStarted: "SpecialFieldAttemptStartedEvent",
+  specialFieldAttemptStarted: "SpecialFieldStartedEvent",
   specialFieldQuestionIssued: "SpecialFieldQuestionIssuedEvent",
   specialFieldProgressUpdated: "SpecialFieldProgressUpdatedEvent",
   specialFieldConquered: "SpecialFieldConqueredEvent",
@@ -111,11 +111,11 @@ export function toConquestResultEvent(payload: ConquestResultDto): ConquestResul
 }
 
 export function toBattleQuestionEvent(payload: BattleQuestionDto): BattleQuestion {
-  return mapBattleQuestion(payload, { attemptKind: "Battle" });
+  return mapBattleQuestion(extractBattleQuestionPayload(payload), { attemptKind: "Battle" });
 }
 
 export function toSpecialFieldQuestionEvent(payload: BattleQuestionDto): BattleQuestion {
-  return mapBattleQuestion(payload, { attemptKind: "SpecialField" });
+  return mapBattleQuestion(extractBattleQuestionPayload(payload), { attemptKind: "SpecialField" });
 }
 
 export function toBattleResultEvent(payload: BattleResultDto): BattleResult {
@@ -126,6 +126,30 @@ export function toSpecialFieldResultEvent(payload: BattleResultDto): BattleResul
   return mapBattleResult(payload, { attemptKind: "SpecialField" });
 }
 
+
+function extractBattleQuestionPayload(payload: BattleQuestionDto): BattleQuestionDto {
+  const wrapped = (payload as BattleQuestionDto & { question?: BattleQuestionDto | null }).question;
+  if (!wrapped) {
+    return payload;
+  }
+
+  return {
+    ...wrapped,
+    battleAttemptId: wrapped.battleAttemptId ?? payload.battleAttemptId,
+    specialFieldAttemptId: wrapped.specialFieldAttemptId ?? payload.specialFieldAttemptId,
+    attemptId: wrapped.attemptId ?? payload.attemptId,
+    gameSessionId: wrapped.gameSessionId ?? payload.gameSessionId,
+    actingPlayerId: wrapped.actingPlayerId ?? payload.actingPlayerId ?? payload.playerId,
+    pieceId: wrapped.pieceId ?? payload.pieceId ?? payload.attackingPieceId,
+    sourceTileId: wrapped.sourceTileId ?? payload.sourceTileId,
+    targetTileId: wrapped.targetTileId ?? payload.targetTileId,
+    categoryId: wrapped.categoryId ?? payload.categoryId,
+    categoryName: wrapped.categoryName ?? payload.categoryName,
+    expiresAtUtc: wrapped.expiresAtUtc ?? payload.expiresAtUtc,
+    correctAnswers: wrapped.correctAnswers ?? payload.correctAnswers,
+    requiredCorrectAnswers: wrapped.requiredCorrectAnswers ?? payload.requiredCorrectAnswers,
+  };
+}
 export function isGameActionResult(payload: unknown): payload is GameActionResultDto {
   return typeof payload === "object" && payload !== null && "session" in payload && "turn" in payload;
 }
@@ -207,8 +231,9 @@ export function isBattleQuestionEvent(payload: unknown): payload is BattleQuesti
     typeof payload === "object" &&
     payload !== null &&
     typeof (payload as BattleQuestionDto).battleAttemptId === "string" &&
-    typeof (payload as BattleQuestionDto).questionAttemptId === "string" &&
-    Array.isArray((payload as BattleQuestionDto).answerOptions)
+    ((typeof (payload as BattleQuestionDto).questionAttemptId === "string" &&
+      Array.isArray((payload as BattleQuestionDto).answerOptions)) ||
+      Array.isArray((payload as { question?: BattleQuestionDto }).question?.answerOptions))
   );
 }
 
@@ -217,8 +242,9 @@ export function isSpecialFieldQuestionEvent(payload: unknown): payload is Battle
     typeof payload === "object" &&
     payload !== null &&
     typeof (payload as BattleQuestionDto).specialFieldAttemptId === "string" &&
-    typeof (payload as BattleQuestionDto).questionAttemptId === "string" &&
-    Array.isArray((payload as BattleQuestionDto).answerOptions)
+    ((typeof (payload as BattleQuestionDto).questionAttemptId === "string" &&
+      Array.isArray((payload as BattleQuestionDto).answerOptions)) ||
+      Array.isArray((payload as { question?: BattleQuestionDto }).question?.answerOptions))
   );
 }
 
@@ -273,3 +299,4 @@ export function isGameSnapshotRequiredEvent(payload: unknown): payload is GameSn
     ("reason" in payload || "minimumSequence" in payload)
   );
 }
+

@@ -54,6 +54,13 @@ export async function submitBattleAnswer(
   if ("questionText" in response || "answerOptions" in response) {
     return mapBattleQuestion(response, { ...options.resultFallback, attemptKind: "Battle", gameSessionId });
   }
+  if (response.nextQuestion) {
+    return mapBattleQuestion(response.nextQuestion, {
+      ...options.resultFallback,
+      attemptKind: "Battle",
+      gameSessionId,
+    });
+  }
   return mapBattleResult(response, { ...options.resultFallback, attemptKind: "Battle", gameSessionId, attemptId: battleAttemptId });
 }
 
@@ -89,6 +96,13 @@ export async function submitSpecialFieldAnswer(
   );
   if ("questionText" in response || "answerOptions" in response) {
     return mapBattleQuestion(response, { ...options.resultFallback, attemptKind: "SpecialField", gameSessionId });
+  }
+  if (response.nextQuestion) {
+    return mapBattleQuestion(response.nextQuestion, {
+      ...options.resultFallback,
+      attemptKind: "SpecialField",
+      gameSessionId,
+    });
   }
   return mapBattleResult(response, {
     ...options.resultFallback,

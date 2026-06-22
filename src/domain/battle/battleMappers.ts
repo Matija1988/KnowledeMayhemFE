@@ -53,9 +53,13 @@ export type BattleResultDto = {
   battleAttemptId?: string;
   specialFieldAttemptId?: string;
   attemptId?: string;
+  attemptKind?: BattleAttemptKind | string;
   gameSessionId?: string;
   status?: BattleAttemptStatus | string;
   resultStatus?: BattleAttemptStatus | string;
+  correctAnswers?: number;
+  requiredCorrectAnswers?: number;
+  nextQuestion?: BattleQuestionDto | null;
   reason?: string | null;
   movedPieceId?: string;
   pieceId?: string;
