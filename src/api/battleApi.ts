@@ -54,7 +54,7 @@ export async function submitBattleAnswer(
   if ("questionText" in response || "answerOptions" in response) {
     return mapBattleQuestion(response, { ...options.resultFallback, attemptKind: "Battle", gameSessionId });
   }
-  if (response.nextQuestion) {
+  if (hasNextQuestion(response)) {
     return mapBattleQuestion(response.nextQuestion, {
       ...options.resultFallback,
       attemptKind: "Battle",
@@ -97,7 +97,7 @@ export async function submitSpecialFieldAnswer(
   if ("questionText" in response || "answerOptions" in response) {
     return mapBattleQuestion(response, { ...options.resultFallback, attemptKind: "SpecialField", gameSessionId });
   }
-  if (response.nextQuestion) {
+  if (hasNextQuestion(response)) {
     return mapBattleQuestion(response.nextQuestion, {
       ...options.resultFallback,
       attemptKind: "SpecialField",
@@ -148,4 +148,8 @@ export function normalizeBattleError(error: unknown): GameActionError {
   }
 
   return { title: "Attempt unavailable", message: "We could not complete that battle action.", displayMode: "toast" };
+}
+
+function hasNextQuestion(response: BattleQuestionDto | BattleResultDto): response is BattleResultDto & { nextQuestion: BattleQuestionDto } {
+  return "nextQuestion" in response && response.nextQuestion !== null && response.nextQuestion !== undefined;
 }

@@ -9,6 +9,8 @@ export type GamePlayer = {
   playerOrder: number;
   displayName: string | null;
   isEliminated: boolean;
+  eliminatedAtUtc?: string | null;
+  eliminationReason?: "Forfeit" | "Defeated" | "DisconnectedTimeout" | string | null;
   createdAtUtc: string;
 };
 

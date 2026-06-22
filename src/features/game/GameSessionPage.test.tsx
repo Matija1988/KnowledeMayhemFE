@@ -1,5 +1,6 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { useAuthStore } from "../../stores/authStore";
@@ -7,6 +8,10 @@ import { GameSessionPage } from "./GameSessionPage";
 import { useGameStore } from "../../stores/gameStore";
 import { useBattleStore } from "../../stores/battleStore";
 import { battleQuestionFixture } from "../../tests/fixtures/battleFixtures";
+import { gameSessionFixture } from "../../tests/fixtures/gameFixtures";
+import { server } from "../../tests/setup";
+import { ToastProvider } from "../../components/ToastProvider";
+import { ErrorModal } from "../../components/ErrorModal";
 
 describe("GameSessionPage", () => {
   it("loads and renders session status", async () => {
@@ -68,6 +73,47 @@ describe("GameSessionPage", () => {
     expect(screen.getByText(/enemy battle attempt pending/i)).toBeInTheDocument();
     expect(screen.getAllByRole("gridcell").every((cell) => cell.getAttribute("aria-disabled") === "true")).toBe(true);
   });
+
+  it("notifies the remaining player about victory and redirects to lobby when a 1v1 game completes", async () => {
+    useAuthStore.getState().login(createJwt("user-2"));
+    server.use(
+      http.get("**/api/game-sessions/forfeit-win", () =>
+        HttpResponse.json(
+          gameSessionFixture({
+            id: "forfeit-win",
+            status: "Completed",
+            currentTurnPlayerId: null,
+            winnerPlayerId: "player-2",
+            endedAtUtc: "2026-06-16T10:30:00.000Z",
+            players: [
+              { ...gameSessionFixture({ id: "forfeit-win" }).players[0], isEliminated: true, eliminatedAtUtc: "2026-06-16T10:30:00.000Z", eliminationReason: "Forfeit" },
+              gameSessionFixture({ id: "forfeit-win" }).players[1],
+            ],
+            pieces: gameSessionFixture({ id: "forfeit-win" }).pieces.map((piece) =>
+              piece.ownerPlayerId === "player-1" ? { ...piece, isCaptured: true, currentTileId: null } : piece,
+            ),
+          }),
+        ),
+      ),
+    );
+
+    renderGamePage("/game/forfeit-win");
+
+    expect(await screen.findByText("Victory")).toBeInTheDocument();
+    expect(screen.getByText(/opponent forfeited/i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("Lobby route")).toBeInTheDocument(), { timeout: 2500 });
+  });
+
+  it("lets players return to lobby from a completed game blocking state", async () => {
+    const user = userEvent.setup();
+    useAuthStore.getState().login(createJwt("user-1"));
+
+    renderGamePage("/game/completed");
+
+    await user.click(await screen.findByRole("button", { name: /return to lobby/i }));
+
+    expect(screen.getByText("Lobby route")).toBeInTheDocument();
+  });
 });
 
 function renderGamePage(path: string) {
@@ -75,7 +121,10 @@ function renderGamePage(path: string) {
     <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/game/:sessionId" element={<GameSessionPage />} />
+        <Route path="/lobby" element={<p>Lobby route</p>} />
       </Routes>
+      <ToastProvider />
+      <ErrorModal />
     </MemoryRouter>,
   );
 }

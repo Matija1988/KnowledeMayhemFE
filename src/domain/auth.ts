@@ -7,6 +7,42 @@ export type LoginResponse = {
   accessToken: string;
 };
 
+export type LogoutStatus = "loggedOut" | "alreadyLoggedOut";
+
+export type LogoutResponse = {
+  status: LogoutStatus;
+  loggedOutAtUtc: string;
+  sessionInvalidated: boolean;
+  lobby?: LogoutLobbyOutcome | null;
+  game?: LogoutGameOutcome | null;
+};
+
+export type LogoutLobbyOutcome = {
+  lobbyId: string;
+  outcome: string;
+  newHostUserId?: string | null;
+};
+
+export type LogoutGameOutcome = {
+  gameSessionId: string;
+  forfeitedPlayerId: string;
+  eliminatedAtUtc: string;
+  eliminationReason: string;
+  pendingAttemptCancelled: boolean;
+  cancelledAttempt?: CancelledAttemptOutcome | null;
+  gameCompleted: boolean;
+  winnerPlayerId?: string | null;
+  endedAtUtc?: string | null;
+  nextTurnPlayerId?: string | null;
+};
+
+export type CancelledAttemptOutcome = {
+  attemptId: string;
+  kind: string;
+  status: string;
+  cancelledAtUtc: string;
+};
+
 export type AuthenticatedSession = {
   accessToken: string | null;
   isAuthenticated: boolean;
@@ -25,6 +61,7 @@ export type LoadingState = {
   isLoading: boolean;
   operation:
     | "login"
+    | "logout"
     | "createLobby"
     | "joinLobby"
     | "readLobby"

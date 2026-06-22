@@ -12,6 +12,7 @@ import { LobbyActions } from "./LobbyActions";
 import { LobbyCodePanel } from "./LobbyCodePanel";
 import { LobbyPlayerList } from "./LobbyPlayerList";
 import { useLobbyActions } from "./useLobbyActions";
+import { LogoutButton } from "../auth/LogoutButton";
 
 export function LobbyRoomPage() {
   const { lobbyId } = useParams();
@@ -188,7 +189,10 @@ export function LobbyRoomPage() {
     <main className="lobby-page">
       <header className="lobby-header">
         <h1>Lobby room</h1>
-        <Badge tone={lobby.status === "Open" ? "success" : "warning"}>{lobby.status}</Badge>
+        <div className="lobby-header__actions">
+          <Badge tone={lobby.status === "Open" ? "success" : "warning"}>{lobby.status}</Badge>
+          <LogoutButton />
+        </div>
       </header>
       <div className="lobby-room-grid">
         <Card>

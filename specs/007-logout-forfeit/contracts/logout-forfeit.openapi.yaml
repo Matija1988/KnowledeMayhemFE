@@ -1,0 +1,201 @@
+﻿openapi: 3.0.3
+info:
+  title: Logout and Active Game Forfeit Contracts
+  version: 0.1.0
+  description: Planning contract for explicit logout, session revocation, and logout-driven gameplay forfeit outcomes.
+  x-contract-source: Verify this planning contract against generated backend OpenAPI during implementation; if generation is unavailable, document the manual reconciliation result in this file.
+paths:
+  /api/identity/logout:
+    post:
+      summary: Explicitly log out the current authenticated session.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Logout completed or the current session was already invalidated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogoutResponse"
+        "401":
+          description: No authenticated session is available.
+        "429":
+          description: Request rejected by rate limiting.
+  /api/game-sessions/{gameSessionId}:
+    get:
+      summary: Read an authoritative gameplay session snapshot.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: gameSessionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Session snapshot.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameSessionSnapshot"
+        "403":
+          description: The authenticated user is not allowed to view this session, including a player blocked after logout forfeit.
+        "404":
+          description: Session not found.
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    LogoutResponse:
+      type: object
+      required:
+        - status
+        - loggedOutAtUtc
+        - sessionInvalidated
+        - lobby
+        - game
+      properties:
+        status:
+          type: string
+          enum: [loggedOut, alreadyLoggedOut]
+        loggedOutAtUtc:
+          type: string
+          format: date-time
+        sessionInvalidated:
+          type: boolean
+        lobby:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/LogoutLobbyOutcome"
+        game:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/LogoutGameOutcome"
+    LogoutLobbyOutcome:
+      type: object
+      required: [lobbyId, outcome]
+      properties:
+        lobbyId:
+          type: string
+          format: uuid
+        outcome:
+          type: string
+          enum: [left, hostTransferred, closed, none]
+        newHostUserId:
+          type: string
+          format: uuid
+          nullable: true
+    LogoutGameOutcome:
+      type: object
+      required:
+        - gameSessionId
+        - forfeitedPlayerId
+        - eliminatedAtUtc
+        - eliminationReason
+        - pendingAttemptCancelled
+        - gameCompleted
+      properties:
+        gameSessionId:
+          type: string
+          format: uuid
+        forfeitedPlayerId:
+          type: string
+          format: uuid
+        eliminatedAtUtc:
+          type: string
+          format: date-time
+        eliminationReason:
+          type: string
+          enum: [forfeit]
+        pendingAttemptCancelled:
+          type: boolean
+        cancelledAttempt:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/CancelledAttempt"
+        gameCompleted:
+          type: boolean
+        winnerPlayerId:
+          type: string
+          format: uuid
+          nullable: true
+        endedAtUtc:
+          type: string
+          format: date-time
+          nullable: true
+        nextTurnPlayerId:
+          type: string
+          format: uuid
+          nullable: true
+    CancelledAttempt:
+      type: object
+      required: [attemptId, kind, status, cancelledAtUtc]
+      properties:
+        attemptId:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum: [conquest, battle, specialField]
+        status:
+          type: string
+          enum: [cancelled]
+        cancelledAtUtc:
+          type: string
+          format: date-time
+    GameSessionSnapshot:
+      type: object
+      required: [id, status, players, currentTurnPlayerId]
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [inProgress, completed, cancelled]
+        currentTurnPlayerId:
+          type: string
+          format: uuid
+          nullable: true
+        winnerPlayerId:
+          type: string
+          format: uuid
+          nullable: true
+        endedAtUtc:
+          type: string
+          format: date-time
+          nullable: true
+        players:
+          type: array
+          items:
+            $ref: "#/components/schemas/GamePlayer"
+    GamePlayer:
+      type: object
+      required: [id, userId, displayName, playerOrder, isEliminated]
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+        playerOrder:
+          type: integer
+          minimum: 1
+        isEliminated:
+          type: boolean
+        eliminatedAtUtc:
+          type: string
+          format: date-time
+          nullable: true
+        eliminationReason:
+          type: string
+          nullable: true
+          enum: [forfeit, defeated, disconnectedTimeout]

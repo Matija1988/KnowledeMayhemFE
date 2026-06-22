@@ -14,8 +14,12 @@ type StoredSession = {
 
 type AuthStore = AuthenticatedSession & {
   storageAvailable: boolean;
+  isLogoutPending: boolean;
   login: (accessToken: string) => void;
   logout: () => void;
+  beginLogout: () => boolean;
+  completeLogout: () => void;
+  failLogout: () => void;
   clearInvalidSession: (reason: string) => void;
   restoreFromStorage: () => void;
 };
@@ -62,6 +66,7 @@ function readStoredSession(): AuthenticatedSession & { storageAvailable: boolean
 
 export const useAuthStore = create<AuthStore>((set) => ({
   ...readStoredSession(),
+  isLogoutPending: false,
   login: (accessToken) => {
     const session = mapLoginResponse({ accessToken });
     const storageAvailable = canUseStorage();
@@ -70,24 +75,46 @@ export const useAuthStore = create<AuthStore>((set) => ({
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ accessToken }));
     }
 
-    set({ ...session, storageAvailable });
+    set({ ...session, storageAvailable, isLogoutPending: false });
   },
   logout: () => {
     if (canUseStorage()) {
       window.localStorage.removeItem(STORAGE_KEY);
     }
 
-    set({ ...createLoggedOutSession(), storageAvailable: canUseStorage() });
+    set({ ...createLoggedOutSession(), storageAvailable: canUseStorage(), isLogoutPending: false });
+  },
+  beginLogout: () => {
+    let didBegin = false;
+    set((state) => {
+      if (state.isLogoutPending) {
+        return state;
+      }
+
+      didBegin = true;
+      return { isLogoutPending: true };
+    });
+    return didBegin;
+  },
+  completeLogout: () => {
+    if (canUseStorage()) {
+      window.localStorage.removeItem(STORAGE_KEY);
+    }
+
+    set({ ...createLoggedOutSession(), storageAvailable: canUseStorage(), isLogoutPending: false });
+  },
+  failLogout: () => {
+    set({ isLogoutPending: false });
   },
   clearInvalidSession: (reason) => {
     if (canUseStorage()) {
       window.localStorage.removeItem(STORAGE_KEY);
     }
 
-    set({ ...createLoggedOutSession(reason), storageAvailable: canUseStorage() });
+    set({ ...createLoggedOutSession(reason), storageAvailable: canUseStorage(), isLogoutPending: false });
   },
   restoreFromStorage: () => {
-    set(readStoredSession());
+    set({ ...readStoredSession(), isLogoutPending: false });
   },
 }));
 
@@ -95,7 +122,7 @@ export function resetAuthStoreForTests(): void {
   if (canUseStorage()) {
     window.localStorage.removeItem(STORAGE_KEY);
   }
-  useAuthStore.setState({ ...createLoggedOutSession(), storageAvailable: canUseStorage() });
+  useAuthStore.setState({ ...createLoggedOutSession(), storageAvailable: canUseStorage(), isLogoutPending: false });
 }
 
 export const authStorageKey = STORAGE_KEY;

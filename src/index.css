@@ -533,6 +533,14 @@ button[type="submit"]:disabled {
   font-size: 1.75rem;
 }
 
+.lobby-header__actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
 .lobby-grid,
 .lobby-room-grid {
   display: grid;

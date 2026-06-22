@@ -15,8 +15,10 @@ import {
   isGameTileOwnershipChangedEvent,
   isGameTurnAdvancedEvent,
   isGameplayQuestionEvent,
+  isCancelledGameplayAttemptEvent,
   isPieceCapturedEvent,
   isPieceLeveledUpEvent,
+  isPlayerForfeitedEvent,
   isQuestionAttemptEvent,
   isSpecialFieldQuestionEvent,
   isSpecialFieldResultEvent,
@@ -131,6 +133,14 @@ export function registerGameHubHandlers(connection: HubLike, handlers: GameHubHa
         handlers.onSnapshotRequired?.(payload);
         return;
       }
+      if (isPlayerForfeitedEvent(payload)) {
+        payload.session ? handlers.onSession(toGameSessionEvent(payload.session)) : handlers.onPatchNeedsRefresh();
+        return;
+      }
+      if (isCancelledGameplayAttemptEvent(payload)) {
+        handlers.onPatchNeedsRefresh();
+        return;
+      }
       if (isGameplayQuestionEvent(payload)) {
         handlers.onGameplayQuestion?.(toGameplayQuestionEvent(payload));
         return;
@@ -200,6 +210,8 @@ export function registerGameHubHandlers(connection: HubLike, handlers: GameHubHa
     gameEventNames.specialFieldFailed,
     gameEventNames.pieceCaptured,
     gameEventNames.pieceLeveledUp,
+    gameEventNames.playerForfeited,
+    gameEventNames.gameplayAttemptCancelled,
     gameEventNames.snapshotRequired,
   ].forEach((eventName) => connection.on(eventName, handlePayload));
   connection.onreconnecting?.(() => {

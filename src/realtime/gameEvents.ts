@@ -38,6 +38,8 @@ export const gameEventNames = {
   specialFieldFailed: "SpecialFieldFailedEvent",
   pieceCaptured: "PieceCapturedEvent",
   pieceLeveledUp: "PieceLeveledUpEvent",
+  playerForfeited: "PlayerForfeitedEvent",
+  gameplayAttemptCancelled: "CancelledGameplayAttemptEvent",
   snapshotRequired: "GameSnapshotRequiredEvent",
 } as const;
 
@@ -88,6 +90,28 @@ export type GameSnapshotRequiredEventDto = {
   gameSessionId: string;
   sequence?: number;
   reason?: string;
+};
+
+export type CancelledGameplayAttemptEventDto = {
+  gameSessionId: string;
+  attemptId: string;
+  kind: string;
+  playerId: string;
+  cancelledAtUtc: string;
+  reason: string;
+  sequence?: number;
+};
+
+export type PlayerForfeitedEventDto = {
+  gameSessionId: string;
+  playerId: string;
+  userId: string;
+  eliminatedAtUtc: string;
+  eliminationReason: string;
+  disabledPieceIds: string[];
+  cancelledAttempt?: CancelledGameplayAttemptEventDto | null;
+  sequence?: number;
+  session?: GameSessionDto;
 };
 
 export function toGameSessionEvent(payload: GameSessionDto): GameSession {
@@ -297,6 +321,29 @@ export function isGameSnapshotRequiredEvent(payload: unknown): payload is GameSn
     !("pieceId" in payload) &&
     !("tileId" in payload) &&
     ("reason" in payload || "minimumSequence" in payload)
+  );
+}
+
+export function isCancelledGameplayAttemptEvent(payload: unknown): payload is CancelledGameplayAttemptEventDto {
+  return (
+    typeof payload === "object" &&
+    payload !== null &&
+    typeof (payload as CancelledGameplayAttemptEventDto).gameSessionId === "string" &&
+    typeof (payload as CancelledGameplayAttemptEventDto).attemptId === "string" &&
+    typeof (payload as CancelledGameplayAttemptEventDto).kind === "string" &&
+    typeof (payload as CancelledGameplayAttemptEventDto).playerId === "string"
+  );
+}
+
+export function isPlayerForfeitedEvent(payload: unknown): payload is PlayerForfeitedEventDto {
+  return (
+    typeof payload === "object" &&
+    payload !== null &&
+    typeof (payload as PlayerForfeitedEventDto).gameSessionId === "string" &&
+    typeof (payload as PlayerForfeitedEventDto).playerId === "string" &&
+    typeof (payload as PlayerForfeitedEventDto).userId === "string" &&
+    typeof (payload as PlayerForfeitedEventDto).eliminationReason === "string" &&
+    Array.isArray((payload as PlayerForfeitedEventDto).disabledPieceIds)
   );
 }
 

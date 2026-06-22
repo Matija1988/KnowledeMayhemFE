@@ -99,6 +99,8 @@ export function mapGamePlayer(dto: GamePlayerDto, fallbackGameSessionId?: string
     playerOrder: dto.playerOrder,
     displayName: dto.displayName ?? null,
     isEliminated: Boolean(dto.isEliminated),
+    eliminatedAtUtc: dto.eliminatedAtUtc ?? null,
+    eliminationReason: dto.eliminationReason ?? null,
     createdAtUtc: dto.createdAtUtc ?? "",
   };
 }

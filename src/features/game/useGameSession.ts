@@ -70,6 +70,22 @@ export function useGameSession(sessionId: string | undefined) {
     }
   }, [accessToken, beginOperation, endOperation, hideLoading, sessionId, setBlockingError, setSession, showError, showLoading]);
 
+  const refreshAuthoritativeSession = useCallback(
+    async (message = "Game state refreshed.") => {
+      if (!sessionId || !accessToken) {
+        return;
+      }
+
+      try {
+        const nextSession = await getGameSession(sessionId, { accessToken });
+        applyGameSnapshot(nextSession, message);
+      } catch {
+        requestSnapshotRefresh("Game state refresh failed. Waiting for the next update.");
+      }
+    },
+    [accessToken, applyGameSnapshot, requestSnapshotRefresh, sessionId],
+  );
+
   const currentUserId = accessToken ? getUserIdFromJwt(accessToken) : null;
   const currentPlayerId = selectCurrentUserPlayer(session, currentUserId)?.id ?? null;
   const reloadConquestSession = useCallback(async () => {
@@ -119,6 +135,18 @@ export function useGameSession(sessionId: string | undefined) {
   }, [loadSession, resetBattle, resetConquest, resetGame]);
 
   useEffect(() => {
+    if (!sessionId || !accessToken || session?.status !== "InProgress" || import.meta.env.MODE === "test") {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void refreshAuthoritativeSession("Game state synchronized.");
+    }, 3000);
+
+    return () => window.clearInterval(intervalId);
+  }, [accessToken, refreshAuthoritativeSession, session?.status, sessionId]);
+
+  useEffect(() => {
     if (!sessionId || !accessToken || import.meta.env.MODE === "test") {
       return;
     }
@@ -141,7 +169,7 @@ export function useGameSession(sessionId: string | undefined) {
     };
     const refreshAuthoritativeSnapshot = (message = "Refreshing game state.") => {
       requestSnapshotRefresh(message);
-      void loadSession();
+      void refreshAuthoritativeSession(message);
     };
 
     setConnection({ status: "connecting", message: "Connecting to game updates." });
@@ -281,7 +309,7 @@ export function useGameSession(sessionId: string | undefined) {
     applyTurnPatch,
     applyConquestResult,
     applyBattleResult,
-    loadSession,
+    refreshAuthoritativeSession,
     receiveAttempt,
     receiveBattleQuestion,
     receiveQuestion,
