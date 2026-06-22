@@ -2,6 +2,7 @@ import { act } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { gameSessionFixture } from "../tests/fixtures/gameFixtures";
 import { conquestResultFixture } from "../tests/fixtures/conquestFixtures";
+import { battleResultFixture } from "../tests/fixtures/battleFixtures";
 import {
   resetGameStoreForTests,
   selectBoardCells,
@@ -111,6 +112,65 @@ describe("gameStore", () => {
     });
 
     expect(useGameStore.getState().session?.turnNumber).toBe(2);
+  });
+
+  it("applies battle result patches for capture, level, ownership, and turn state", () => {
+    const session = gameSessionFixture();
+
+    act(() => {
+      useGameStore.getState().setSession(session);
+      useGameStore.getState().applyBattleResult(battleResultFixture({ session: null }));
+    });
+
+    expect(useGameStore.getState().piecesById["piece-1"]).toMatchObject({ currentTileId: "tile-1-0", level: 2 });
+    expect(useGameStore.getState().piecesById["piece-2"]).toMatchObject({ currentTileId: null, isCaptured: true });
+    expect(useGameStore.getState().tilesById["tile-0-0"].occupyingPieceId).toBeNull();
+    expect(useGameStore.getState().tilesById["tile-1-0"]).toMatchObject({
+      occupyingPieceId: "piece-1",
+      ownerPlayerId: "player-1",
+    });
+    expect(useGameStore.getState().session?.currentTurnPlayerId).toBe("player-2");
+    expect(useGameStore.getState().session?.turnNumber).toBe(2);
+  });
+
+  it("ignores out-of-order battle and piece patch events", () => {
+    const session = gameSessionFixture();
+
+    act(() => {
+      useGameStore.getState().setSession(session);
+      useGameStore.getState().applyBattleResult(battleResultFixture({ session: null, sequence: 5 }));
+      useGameStore.getState().applyBattleResult(
+        battleResultFixture({
+          session: null,
+          sequence: 4,
+          movedPieceId: "piece-1",
+          sourceTileId: "tile-1-0",
+          targetTileId: "tile-2-0",
+          newLevel: 3,
+          turnNumber: 3,
+        }),
+      );
+      useGameStore.getState().applyPieceLeveledPatch("session-1", "piece-1", 3, 4);
+      useGameStore.getState().applyPieceCapturedPatch("session-1", "piece-1", "tile-1-0", 4);
+    });
+
+    expect(useGameStore.getState().piecesById["piece-1"]).toMatchObject({ currentTileId: "tile-1-0", level: 2, isCaptured: false });
+    expect(useGameStore.getState().lastSequence).toBe(5);
+  });
+
+  it("applies standalone captured and leveled realtime patches", () => {
+    const session = gameSessionFixture();
+
+    act(() => {
+      useGameStore.getState().setSession(session);
+      useGameStore.getState().applyPieceCapturedPatch("session-1", "piece-2", "tile-2-1", 2);
+      useGameStore.getState().applyPieceLeveledPatch("session-1", "piece-1", 3, 3);
+    });
+
+    expect(useGameStore.getState().piecesById["piece-2"]).toMatchObject({ currentTileId: null, isCaptured: true });
+    expect(useGameStore.getState().tilesById["tile-2-1"].occupyingPieceId).toBeNull();
+    expect(useGameStore.getState().piecesById["piece-1"].level).toBe(3);
+    expect(useGameStore.getState().lastSequence).toBe(3);
   });
 
   it("derives current player, turn state, piece-on-tile, and board cells", () => {

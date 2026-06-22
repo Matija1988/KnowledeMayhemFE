@@ -10,7 +10,7 @@ import type {
 } from "./gameTypes";
 
 const gameSessionStatuses = new Set<GameSessionStatus>(["InProgress", "Completed", "Cancelled"]);
-const tileTypes = new Set<TileType>(["Normal", "Blocked"]);
+const tileTypes = new Set<TileType>(["Normal", "Blocked", "Special"]);
 
 export type GamePlayerDto = Omit<GamePlayer, "id" | "gameSessionId" | "createdAtUtc"> & {
   id?: string;
@@ -23,6 +23,7 @@ export type BoardTileDto = Omit<BoardTile, "id" | "gameSessionId" | "createdAtUt
   tileId?: string;
   gameSessionId?: string;
   createdAtUtc?: string;
+  type?: string;
 };
 export type PieceDto = Omit<Piece, "id" | "gameSessionId" | "createdAtUtc"> & {
   id?: string;
@@ -108,8 +109,9 @@ export function mapBoardTile(dto: BoardTileDto, fallbackGameSessionId?: string):
   if (!tileId || !gameSessionId) {
     throw new Error("Board tile response is missing required fields.");
   }
-  if (!tileTypes.has(dto.tileType)) {
-    throw new Error(`Unsupported tile type: ${String(dto.tileType)}`);
+  const tileType = normalizeTileType(dto.tileType ?? dto.type);
+  if (!tileTypes.has(tileType)) {
+    throw new Error(`Unsupported tile type: ${String(dto.tileType ?? dto.type)}`);
   }
   return {
     id: tileId,
@@ -119,7 +121,7 @@ export function mapBoardTile(dto: BoardTileDto, fallbackGameSessionId?: string):
     categoryId: dto.categoryId ?? null,
     ownerPlayerId: dto.ownerPlayerId ?? null,
     occupyingPieceId: dto.occupyingPieceId ?? null,
-    tileType: dto.tileType,
+    tileType,
     createdAtUtc: dto.createdAtUtc ?? "",
   };
 }
@@ -127,16 +129,17 @@ export function mapBoardTile(dto: BoardTileDto, fallbackGameSessionId?: string):
 export function mapPiece(dto: PieceDto, fallbackGameSessionId?: string): Piece {
   const pieceId = dto.id ?? dto.pieceId;
   const gameSessionId = dto.gameSessionId ?? fallbackGameSessionId;
-  if (!pieceId || !gameSessionId || !dto.ownerPlayerId || !dto.currentTileId) {
+  if (!pieceId || !gameSessionId || !dto.ownerPlayerId || (!dto.currentTileId && !dto.isCaptured)) {
     throw new Error("Piece response is missing required fields.");
   }
   return {
     id: pieceId,
     gameSessionId,
     ownerPlayerId: dto.ownerPlayerId,
-    currentTileId: dto.currentTileId,
-    level: dto.level,
+    currentTileId: dto.currentTileId ?? null,
+    level: normalizePieceLevel(dto.level),
     isCaptured: Boolean(dto.isCaptured),
+    capturedAtUtc: dto.capturedAtUtc ?? null,
     createdAtUtc: dto.createdAtUtc ?? "",
   };
 }
@@ -197,8 +200,25 @@ export function validateGameSessionSnapshot(session: GameSession): void {
     if (!playerIds.has(piece.ownerPlayerId)) {
       throw new Error("Game session response references an unknown piece owner.");
     }
-    if (!tileIds.has(piece.currentTileId)) {
+    if (!piece.isCaptured && (!piece.currentTileId || !tileIds.has(piece.currentTileId))) {
       throw new Error("Game session response references an unknown piece tile.");
     }
   }
+}
+
+function normalizeTileType(value: unknown): TileType {
+  if (value === "special") {
+    return "Special";
+  }
+  if (value === "blocked") {
+    return "Blocked";
+  }
+  if (value === "normal") {
+    return "Normal";
+  }
+  return value as TileType;
+}
+
+function normalizePieceLevel(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 1 ? value : 1;
 }

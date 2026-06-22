@@ -2,6 +2,7 @@ import { useCallback, useEffect } from "react";
 import { getUserIdFromJwt } from "../../domain/auth";
 import { getGameSession, normalizeGameError } from "../../api/gameApi";
 import { useConquestActions } from "../conquest/useConquestActions";
+import { useBattleActions } from "../battle/useBattleActions";
 import {
   findTileByCoordinate,
   getOrthogonalCandidateTargets,
@@ -10,9 +11,11 @@ import {
 } from "../../domain/game/gameMovement";
 import type { BoardCoordinate } from "../../domain/game/gameTypes";
 import { createGameHubConnection, joinGameSessionHubGroup, registerGameHubHandlers } from "../../realtime/gameHub";
+import { subscribeToGameBroadcast } from "../../realtime/gameBroadcast";
 import { useAuthStore } from "../../stores/authStore";
 import { selectCurrentUserPlayer } from "../../stores/gameStore";
 import { useConquestStore } from "../../stores/conquestStore";
+import { useBattleStore } from "../../stores/battleStore";
 import { useErrorStore } from "../../stores/errorStore";
 import { useGameStore } from "../../stores/gameStore";
 import { useLoadingStore } from "../../stores/loadingStore";
@@ -41,6 +44,7 @@ export function useGameSession(sessionId: string | undefined) {
   const requestSnapshotRefresh = useGameStore((state) => state.requestSnapshotRefresh);
   const setConnection = useGameStore((state) => state.setConnection);
   const resetConquest = useConquestStore((state) => state.resetConquest);
+  const resetBattle = useBattleStore((state) => state.resetBattle);
 
   const loadSession = useCallback(async () => {
     if (!sessionId || !accessToken) {
@@ -90,12 +94,29 @@ export function useGameSession(sessionId: string | undefined) {
     receiveAttempt,
     applyConquestResult,
   } = conquest;
+  const battle = useBattleActions({
+    session,
+    accessToken,
+    currentPlayerId,
+    selectedPieceId,
+    reload: reloadConquestSession,
+  });
+  const {
+    battleState,
+    startForTarget,
+    selectAnswer: selectBattleAnswer,
+    submitAnswer: submitBattleAnswer,
+    expirePending: expireBattle,
+    receiveQuestion: receiveBattleQuestion,
+    applyBattleResult,
+  } = battle;
 
   useEffect(() => {
     resetGame();
     resetConquest();
+    resetBattle();
     void loadSession();
-  }, [loadSession, resetConquest, resetGame]);
+  }, [loadSession, resetBattle, resetConquest, resetGame]);
 
   useEffect(() => {
     if (!sessionId || !accessToken || import.meta.env.MODE === "test") {
@@ -173,6 +194,36 @@ export function useGameSession(sessionId: string | undefined) {
         }
         applyConquestResult(result);
       },
+      onBattleQuestion: (question) => {
+        if (!isActive || question.gameSessionId !== sessionId) {
+          return;
+        }
+        receiveBattleQuestion(question);
+      },
+      onBattleResult: (result) => {
+        if (!isActive || result.gameSessionId !== sessionId) {
+          return;
+        }
+        applyBattleResult(result);
+      },
+      onPieceCaptured: (event) => {
+        if (!isActive || event.gameSessionId !== sessionId) {
+          return;
+        }
+        useGameStore.getState().applyPieceCapturedPatch(event.gameSessionId, event.pieceId, event.removedFromTileId ?? null, event.sequence ?? null);
+      },
+      onPieceLeveledUp: (event) => {
+        if (!isActive || event.gameSessionId !== sessionId) {
+          return;
+        }
+        useGameStore.getState().applyPieceLeveledPatch(event.gameSessionId, event.pieceId, event.newLevel, event.sequence ?? null);
+      },
+      onSnapshotRequired: (event) => {
+        if (!isActive || event.gameSessionId !== sessionId) {
+          return;
+        }
+        refreshAuthoritativeSnapshot(event.reason ?? "Refreshing authoritative game state.");
+      },
       onPatchNeedsRefresh: () => {
         if (!isActive) {
           return;
@@ -229,14 +280,27 @@ export function useGameSession(sessionId: string | undefined) {
     applyTileOwnershipPatch,
     applyTurnPatch,
     applyConquestResult,
+    applyBattleResult,
     loadSession,
     receiveAttempt,
+    receiveBattleQuestion,
     receiveQuestion,
     requestSnapshotRefresh,
     sessionId,
     setConnection,
     showError,
   ]);
+
+  useEffect(() => {
+    if (!sessionId) {
+      return;
+    }
+    return subscribeToGameBroadcast((message) => {
+      if (message.type === "battle-result" && message.result.gameSessionId === sessionId) {
+        applyBattleResult(message.result);
+      }
+    });
+  }, [applyBattleResult, sessionId]);
 
   const selectPiece = useCallback(
     (pieceId: string) => {
@@ -264,9 +328,13 @@ export function useGameSession(sessionId: string | undefined) {
         return;
       }
 
+      const battleHandled = await startForTarget(target);
+      if (battleHandled) {
+        return;
+      }
       await startAttempt(target);
     },
-    [accessToken, pendingOperation, selectedPieceId, session, showError, startAttempt],
+    [accessToken, pendingOperation, selectedPieceId, session, showError, startAttempt, startForTarget],
   );
 
   return {
@@ -284,5 +352,9 @@ export function useGameSession(sessionId: string | undefined) {
     selectAnswer,
     submitAnswer,
     expireConquest: expirePending,
+    battleState,
+    selectBattleAnswer,
+    submitBattleAnswer,
+    expireBattle,
   };
 }

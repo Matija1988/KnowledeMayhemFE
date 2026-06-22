@@ -5,6 +5,8 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { useAuthStore } from "../../stores/authStore";
 import { GameSessionPage } from "./GameSessionPage";
 import { useGameStore } from "../../stores/gameStore";
+import { useBattleStore } from "../../stores/battleStore";
+import { battleQuestionFixture } from "../../tests/fixtures/battleFixtures";
 
 describe("GameSessionPage", () => {
   it("loads and renders session status", async () => {
@@ -52,6 +54,19 @@ describe("GameSessionPage", () => {
     expect(await screen.findByRole("dialog", { name: /conquest question/i })).toBeInTheDocument();
     expect(screen.getByText(/which answer conquers this tile/i)).toBeInTheDocument();
     expect(useGameStore.getState().piecesById["piece-1"].currentTileId).toBe("tile-0-0");
+  });
+
+  it("renders battle question state and pauses board interaction while pending", async () => {
+    useAuthStore.getState().login(createJwt("user-1"));
+
+    renderGamePage("/game/session-1");
+    await waitFor(() => expect(screen.getAllByText(/turn 1/i).length).toBeGreaterThan(0));
+
+    act(() => useBattleStore.getState().receiveQuestion(battleQuestionFixture()));
+
+    expect(await screen.findByRole("dialog", { name: /battle question/i })).toBeInTheDocument();
+    expect(screen.getByText(/enemy battle attempt pending/i)).toBeInTheDocument();
+    expect(screen.getAllByRole("gridcell").every((cell) => cell.getAttribute("aria-disabled") === "true")).toBe(true);
   });
 });
 

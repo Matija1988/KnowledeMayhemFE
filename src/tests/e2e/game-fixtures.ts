@@ -68,6 +68,114 @@ export const movedGameSession = {
   ),
 };
 
+export const battleReadyGameSession = {
+  ...gameSession,
+  tiles: gameSession.tiles.map((candidate) => {
+    if (candidate.id === "tile-1-0") {
+      return { ...candidate, occupyingPieceId: "piece-2", ownerPlayerId: "player-2" };
+    }
+    if (candidate.id === "tile-2-1") {
+      return { ...candidate, occupyingPieceId: null };
+    }
+    return candidate;
+  }),
+  pieces: gameSession.pieces.map((candidate) =>
+    candidate.id === "piece-2" ? { ...candidate, currentTileId: "tile-1-0", level: 2 } : candidate,
+  ),
+};
+
+export const battleResolvedGameSession = {
+  ...battleReadyGameSession,
+  currentTurnPlayerId: "player-2",
+  turnNumber: 2,
+  tiles: battleReadyGameSession.tiles.map((candidate) => {
+    if (candidate.id === "tile-0-0") {
+      return { ...candidate, occupyingPieceId: null };
+    }
+    if (candidate.id === "tile-1-0") {
+      return { ...candidate, occupyingPieceId: "piece-1", ownerPlayerId: "player-1" };
+    }
+    return candidate;
+  }),
+  pieces: battleReadyGameSession.pieces.map((candidate) =>
+    candidate.id === "piece-1"
+      ? { ...candidate, currentTileId: "tile-1-0", level: 2 }
+      : candidate.id === "piece-2"
+        ? { ...candidate, currentTileId: null, isCaptured: true, capturedAtUtc: now }
+        : candidate,
+  ),
+};
+
+export const specialReadyGameSession = {
+  ...gameSession,
+  tiles: gameSession.tiles.map((candidate) =>
+    candidate.id === "tile-1-0" ? { ...candidate, tileType: "Special" as const, occupyingPieceId: null } : candidate,
+  ),
+};
+
+export const specialResolvedGameSession = {
+  ...specialReadyGameSession,
+  currentTurnPlayerId: "player-2",
+  turnNumber: 2,
+  tiles: specialReadyGameSession.tiles.map((candidate) => {
+    if (candidate.id === "tile-0-0") {
+      return { ...candidate, occupyingPieceId: null };
+    }
+    if (candidate.id === "tile-1-0") {
+      return { ...candidate, occupyingPieceId: "piece-1", ownerPlayerId: "player-1" };
+    }
+    return candidate;
+  }),
+  pieces: specialReadyGameSession.pieces.map((candidate) =>
+    candidate.id === "piece-1" ? { ...candidate, currentTileId: "tile-1-0", level: 2 } : candidate,
+  ),
+};
+
+export const repeatFallbackBattleQuestion = {
+  battleAttemptId: "battle-1",
+  attemptKind: "Battle",
+  attemptId: "battle-1",
+  questionAttemptId: "battle-question-repeat-1",
+  questionId: "question-repeat-1",
+  gameSessionId: "session-1",
+  actingPlayerId: "player-1",
+  pieceId: "piece-1",
+  sourceTileId: "tile-0-0",
+  targetTileId: "tile-1-0",
+  categoryId: "cat-1",
+  categoryName: "History",
+  questionText: "Repeated fallback battle question?",
+  answerOptions: [
+    { answerId: "answer-1", text: "Alpha" },
+    { answerId: "answer-2", text: "Beta" },
+    { answerId: "answer-3", text: "Gamma" },
+    { answerId: "answer-4", text: "Delta" },
+  ],
+  expiresAtUtc: null,
+  progress: { requiredCorrectAnswers: 3, correctAnswers: 0, status: "Pending" },
+  questionSelectionMode: "RepeatFallback",
+};
+
+export const specialFieldQuestion = {
+  specialFieldAttemptId: "special-1",
+  attemptKind: "SpecialField",
+  attemptId: "special-1",
+  questionAttemptId: "special-question-1",
+  questionId: "question-special-1",
+  gameSessionId: "session-1",
+  actingPlayerId: "player-1",
+  pieceId: "piece-1",
+  sourceTileId: "tile-0-0",
+  targetTileId: "tile-1-0",
+  categoryId: "cat-1",
+  categoryName: "History",
+  questionText: "Which answer conquers this special field?",
+  answerOptions: repeatFallbackBattleQuestion.answerOptions,
+  expiresAtUtc: null,
+  progress: { requiredCorrectAnswers: 3, correctAnswers: 0, status: "Pending" },
+  questionSelectionMode: "ActiveValid",
+};
+
 export const conquestQuestion = {
   questionAttemptId: "attempt-1",
   questionId: "question-1",
@@ -120,6 +228,57 @@ export async function routeGameApi(page: Page) {
   await page.route("**/api/game-sessions/session-1/conquest-attempts", async (route) => {
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(conquestQuestion) });
   });
+  await page.route("**/api/game-sessions/session-1/battle-attempts", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(repeatFallbackBattleQuestion) });
+  });
+  await page.route("**/api/game-sessions/session-1/battle-attempts/battle-1/answers", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        battleAttemptId: "battle-1",
+        status: "Succeeded",
+        reason: "completed",
+        gameSessionId: "session-1",
+        movedPieceId: "piece-1",
+        capturedPieceId: "piece-2",
+        leveledPieceId: "piece-1",
+        newLevel: 2,
+        sourceTileId: "tile-0-0",
+        targetTileId: "tile-1-0",
+        targetOwnerPlayerId: "player-1",
+        nextTurnPlayerId: "player-2",
+        turnNumber: 2,
+        sequence: 2,
+        session: battleResolvedGameSession,
+      }),
+    });
+  });
+  await page.route("**/api/game-sessions/session-1/special-field-attempts", async (route) => {
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(specialFieldQuestion) });
+  });
+  await page.route("**/api/game-sessions/session-1/special-field-attempts/special-1/answers", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        specialFieldAttemptId: "special-1",
+        status: "Succeeded",
+        reason: "completed",
+        gameSessionId: "session-1",
+        movedPieceId: "piece-1",
+        leveledPieceId: "piece-1",
+        newLevel: 2,
+        sourceTileId: "tile-0-0",
+        targetTileId: "tile-1-0",
+        targetOwnerPlayerId: "player-1",
+        nextTurnPlayerId: "player-2",
+        turnNumber: 2,
+        sequence: 2,
+        session: specialResolvedGameSession,
+      }),
+    });
+  });
   await page.route("**/api/question-attempts/attempt-1/answer", async (route) => {
     await route.fulfill({
       status: 200,
@@ -145,7 +304,7 @@ export async function routeGameApi(page: Page) {
   });
 }
 
-function tile(x: number, y: number, occupyingPieceId: string | null = null, tileType: "Normal" | "Blocked" = "Normal") {
+function tile(x: number, y: number, occupyingPieceId: string | null = null, tileType: "Normal" | "Blocked" | "Special" = "Normal") {
   return {
     id: `tile-${x}-${y}`,
     gameSessionId: "session-1",
@@ -159,7 +318,7 @@ function tile(x: number, y: number, occupyingPieceId: string | null = null, tile
   };
 }
 
-function piece(id: string, ownerPlayerId: string, currentTileId: string) {
+function piece(id: string, ownerPlayerId: string, currentTileId: string | null) {
   return {
     id,
     gameSessionId: "session-1",

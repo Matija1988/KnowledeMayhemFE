@@ -1,0 +1,343 @@
+openapi: 3.1.0
+info:
+  title: Knowledge Mayhem Battle and Special Field Gameplay Contracts
+  version: 0.1.0
+  description: Planning contract for server-authoritative battle, special field, capture, and level progression flows.
+servers:
+  - url: "{apiBaseUrl}"
+    variables:
+      apiBaseUrl:
+        default: http://localhost:5168
+security:
+  - bearerAuth: []
+paths:
+  /api/game-sessions/{gameSessionId}/battle-attempts:
+    post:
+      summary: Start an enemy-piece battle.
+      operationId: startBattleAttempt
+      parameters:
+        - $ref: "#/components/parameters/GameSessionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartBattleAttemptRequest"
+      responses:
+        "200":
+          description: Battle started and first question issued.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BattleQuestionResponse"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+  /api/game-sessions/{gameSessionId}/battle-attempts/{battleAttemptId}/answers:
+    post:
+      summary: Submit an answer for the active battle question.
+      operationId: submitBattleAnswer
+      parameters:
+        - $ref: "#/components/parameters/GameSessionId"
+        - $ref: "#/components/parameters/BattleAttemptId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitAttemptAnswerRequest"
+      responses:
+        "200":
+          description: Battle progress, next question, or final result.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/BattleQuestionResponse"
+                  - $ref: "#/components/schemas/BattleResultResponse"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+  /api/game-sessions/{gameSessionId}/special-field-attempts:
+    post:
+      summary: Start an unoccupied special field conquest.
+      operationId: startSpecialFieldAttempt
+      parameters:
+        - $ref: "#/components/parameters/GameSessionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartSpecialFieldAttemptRequest"
+      responses:
+        "200":
+          description: Special field attempt started and first question issued.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpecialFieldQuestionResponse"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+  /api/game-sessions/{gameSessionId}/special-field-attempts/{specialFieldAttemptId}/answers:
+    post:
+      summary: Submit an answer for the active special field question.
+      operationId: submitSpecialFieldAnswer
+      parameters:
+        - $ref: "#/components/parameters/GameSessionId"
+        - $ref: "#/components/parameters/SpecialFieldAttemptId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitAttemptAnswerRequest"
+      responses:
+        "200":
+          description: Special field progress, next question, or final result.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/SpecialFieldQuestionResponse"
+                  - $ref: "#/components/schemas/SpecialFieldResultResponse"
+        "400":
+          $ref: "#/components/responses/Problem"
+        "401":
+          $ref: "#/components/responses/Problem"
+        "403":
+          $ref: "#/components/responses/Problem"
+        "409":
+          $ref: "#/components/responses/Problem"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    GameSessionId:
+      name: gameSessionId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    BattleAttemptId:
+      name: battleAttemptId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    SpecialFieldAttemptId:
+      name: specialFieldAttemptId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  responses:
+    Problem:
+      description: Problem details error response.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+  schemas:
+    StartBattleAttemptRequest:
+      type: object
+      required: [attackingPieceId, targetTileId]
+      properties:
+        attackingPieceId:
+          type: string
+          format: uuid
+        targetTileId:
+          type: string
+          format: uuid
+    StartSpecialFieldAttemptRequest:
+      type: object
+      required: [pieceId, targetTileId]
+      properties:
+        pieceId:
+          type: string
+          format: uuid
+        targetTileId:
+          type: string
+          format: uuid
+    SubmitAttemptAnswerRequest:
+      type: object
+      required: [questionAttemptId, answerId]
+      properties:
+        questionAttemptId:
+          type: string
+          format: uuid
+        answerId:
+          type: string
+          format: uuid
+    AnswerOptionResponse:
+      type: object
+      required: [answerId, text]
+      properties:
+        answerId:
+          type: string
+          format: uuid
+        text:
+          type: string
+    AttemptProgressResponse:
+      type: object
+      required: [requiredCorrectAnswers, correctAnswers, status]
+      properties:
+        requiredCorrectAnswers:
+          type: integer
+          minimum: 1
+        correctAnswers:
+          type: integer
+          minimum: 0
+        status:
+          type: string
+          enum: [pending, succeeded, failed, expired, cancelled]
+    BattleQuestionResponse:
+      type: object
+      required: [battleAttemptId, questionAttemptId, questionId, categoryId, categoryName, questionText, answerOptions, progress]
+      properties:
+        battleAttemptId:
+          type: string
+          format: uuid
+        questionAttemptId:
+          type: string
+          format: uuid
+        questionId:
+          type: string
+          format: uuid
+        categoryId:
+          type: string
+          format: uuid
+        categoryName:
+          type: string
+        questionText:
+          type: string
+        answerOptions:
+          type: array
+          minItems: 2
+          items:
+            $ref: "#/components/schemas/AnswerOptionResponse"
+        expiresAtUtc:
+          type: string
+          format: date-time
+        progress:
+          $ref: "#/components/schemas/AttemptProgressResponse"
+    SpecialFieldQuestionResponse:
+      type: object
+      required: [specialFieldAttemptId, questionAttemptId, questionId, categoryId, categoryName, questionText, answerOptions, progress]
+      properties:
+        specialFieldAttemptId:
+          type: string
+          format: uuid
+        questionAttemptId:
+          type: string
+          format: uuid
+        questionId:
+          type: string
+          format: uuid
+        categoryId:
+          type: string
+          format: uuid
+        categoryName:
+          type: string
+        questionText:
+          type: string
+        answerOptions:
+          type: array
+          minItems: 2
+          items:
+            $ref: "#/components/schemas/AnswerOptionResponse"
+        expiresAtUtc:
+          type: string
+          format: date-time
+        progress:
+          $ref: "#/components/schemas/AttemptProgressResponse"
+    BattleResultResponse:
+      type: object
+      required: [battleAttemptId, status, reason, nextTurnPlayerId, sequence]
+      properties:
+        battleAttemptId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [succeeded, failed, expired, cancelled]
+        reason:
+          type: string
+        capturedPieceId:
+          type: string
+          format: uuid
+        movedPieceId:
+          type: string
+          format: uuid
+        leveledPieceId:
+          type: string
+          format: uuid
+        newLevel:
+          type: integer
+        nextTurnPlayerId:
+          type: string
+          format: uuid
+        sequence:
+          type: integer
+    SpecialFieldResultResponse:
+      type: object
+      required: [specialFieldAttemptId, status, reason, nextTurnPlayerId, sequence]
+      properties:
+        specialFieldAttemptId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [succeeded, failed, expired, cancelled]
+        reason:
+          type: string
+        movedPieceId:
+          type: string
+          format: uuid
+        leveledPieceId:
+          type: string
+          format: uuid
+        newLevel:
+          type: integer
+        nextTurnPlayerId:
+          type: string
+          format: uuid
+        sequence:
+          type: integer
+    ProblemDetails:
+      type: object
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        code:
+          type: string
+        traceId:
+          type: string

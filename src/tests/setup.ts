@@ -5,11 +5,13 @@ import { identityHandlers } from "./handlers/identityHandlers";
 import { lobbyHandlers } from "./handlers/lobbyHandlers";
 import { gameHandlers } from "./handlers/gameHandlers";
 import { conquestHandlers } from "./handlers/conquestHandlers";
+import { battleHandlers } from "./handlers/battleHandlers";
 import { questionBankHandlers } from "./handlers/questionBankHandlers";
 import { resetAuthStoreForTests } from "../stores/authStore";
 import { resetErrorStoreForTests } from "../stores/errorStore";
 import { resetGameStoreForTests } from "../stores/gameStore";
 import { resetConquestStoreForTests } from "../stores/conquestStore";
+import { resetBattleStoreForTests } from "../stores/battleStore";
 import { resetLoadingStoreForTests } from "../stores/loadingStore";
 import { resetLobbyStoreForTests } from "../stores/lobbyStore";
 import { resetQuestionBankStoreForTests } from "../stores/questionBankStore";
@@ -19,6 +21,7 @@ export const server = setupServer(
   ...lobbyHandlers,
   ...gameHandlers,
   ...conquestHandlers,
+  ...battleHandlers,
   ...questionBankHandlers,
 );
 
@@ -30,6 +33,7 @@ afterEach(() => {
   resetErrorStoreForTests();
   resetGameStoreForTests();
   resetConquestStoreForTests();
+  resetBattleStoreForTests();
   resetLoadingStoreForTests();
   resetLobbyStoreForTests();
   resetQuestionBankStoreForTests();

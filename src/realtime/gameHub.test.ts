@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { getGameHubUrl, joinGameSessionHubGroup, registerGameHubHandlers } from "./gameHub";
 import { gameActionResultFixture, gameSessionFixture } from "../tests/fixtures/gameFixtures";
 import { conquestResultFixture, gameplayQuestionFixture } from "../tests/fixtures/conquestFixtures";
+import { battleQuestionFixture, battleResultFixture, specialFieldQuestionFixture } from "../tests/fixtures/battleFixtures";
 
 describe("gameHub", () => {
   it("derives the game hub URL from the API base URL", () => {
@@ -25,6 +26,11 @@ describe("gameHub", () => {
       onGameplayQuestion: vi.fn(),
       onQuestionAttempt: vi.fn(),
       onConquestResult: vi.fn(),
+      onBattleQuestion: vi.fn(),
+      onBattleResult: vi.fn(),
+      onPieceCaptured: vi.fn(),
+      onPieceLeveledUp: vi.fn(),
+      onSnapshotRequired: vi.fn(),
       onPatchNeedsRefresh: vi.fn(),
       onConnectionStatus: vi.fn(),
     };
@@ -49,12 +55,24 @@ describe("gameHub", () => {
       ownerPlayerId: "player-1",
       turnNumber: 2,
     });
+    callbacks.get("BattleQuestionIssuedEvent")?.({ ...battleQuestionFixture(), battleAttemptId: "battle-1" });
+    callbacks.get("SpecialFieldQuestionIssuedEvent")?.({ ...specialFieldQuestionFixture(), specialFieldAttemptId: "special-1" });
+    callbacks.get("BattleSucceededEvent")?.({ ...battleResultFixture({ session: null }), battleAttemptId: "battle-1" });
+    callbacks.get("PieceCapturedEvent")?.({ gameSessionId: "session-1", pieceId: "piece-2", removedFromTileId: "tile-2-1" });
+    callbacks.get("PieceLeveledUpEvent")?.({ gameSessionId: "session-1", pieceId: "piece-1", newLevel: 2 });
+    callbacks.get("GameSnapshotRequiredEvent")?.({ gameSessionId: "session-1", reason: "missed-event" });
 
     expect(handlers.onSession).toHaveBeenCalledWith(expect.objectContaining({ id: "session-1" }));
     expect(handlers.onActionResult).toHaveBeenCalledWith(expect.objectContaining({ turn: expect.objectContaining({ turnNumber: 2 }) }));
     expect(handlers.onTurnAdvanced).toHaveBeenCalledWith(expect.objectContaining({ currentTurnPlayerId: "player-2" }));
     expect(handlers.onGameplayQuestion).toHaveBeenCalledWith(expect.objectContaining({ questionAttemptId: "attempt-1" }));
     expect(handlers.onConquestResult).toHaveBeenCalledWith(expect.objectContaining({ resultStatus: "Succeeded" }));
+    expect(handlers.onBattleQuestion).toHaveBeenCalledWith(expect.objectContaining({ attemptKind: "Battle" }));
+    expect(handlers.onBattleQuestion).toHaveBeenCalledWith(expect.objectContaining({ attemptKind: "SpecialField" }));
+    expect(handlers.onBattleResult).toHaveBeenCalledWith(expect.objectContaining({ status: "Succeeded" }));
+    expect(handlers.onPieceCaptured).toHaveBeenCalledWith(expect.objectContaining({ pieceId: "piece-2" }));
+    expect(handlers.onPieceLeveledUp).toHaveBeenCalledWith(expect.objectContaining({ newLevel: 2 }));
+    expect(handlers.onSnapshotRequired).toHaveBeenCalledWith(expect.objectContaining({ reason: "missed-event" }));
     expect(connection.onreconnecting).toHaveBeenCalled();
   });
 
@@ -72,6 +90,11 @@ describe("gameHub", () => {
       onGameplayQuestion: vi.fn(),
       onQuestionAttempt: vi.fn(),
       onConquestResult: vi.fn(),
+      onBattleQuestion: vi.fn(),
+      onBattleResult: vi.fn(),
+      onPieceCaptured: vi.fn(),
+      onPieceLeveledUp: vi.fn(),
+      onSnapshotRequired: vi.fn(),
       onPatchNeedsRefresh: vi.fn(),
       onConnectionStatus: vi.fn(),
     };

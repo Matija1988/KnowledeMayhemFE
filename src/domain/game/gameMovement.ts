@@ -25,7 +25,14 @@ export function isCandidateTarget(session: GameSession, pieceId: string, target:
   }
 
   const distance = Math.abs(currentTile.x - target.x) + Math.abs(currentTile.y - target.y);
-  return distance === 1 && targetTile.tileType !== "Blocked" && !targetTile.occupyingPieceId;
+  if (distance !== 1 || targetTile.tileType === "Blocked") {
+    return false;
+  }
+  if (!targetTile.occupyingPieceId) {
+    return true;
+  }
+  const occupyingPiece = session.pieces.find((candidate) => candidate.id === targetTile.occupyingPieceId && !candidate.isCaptured);
+  return Boolean(occupyingPiece && occupyingPiece.ownerPlayerId !== piece.ownerPlayerId);
 }
 
 export function getPieceDisabledReason(
@@ -65,6 +72,9 @@ export function findTileByCoordinate(session: GameSession, coordinate: BoardCoor
 }
 
 export function getPieceCurrentCoordinate(session: GameSession, piece: Piece): BoardCoordinate | null {
+  if (!piece.currentTileId) {
+    return null;
+  }
   const tile = session.tiles.find((candidate) => candidate.id === piece.currentTileId);
   return tile ? { x: tile.x, y: tile.y } : null;
 }

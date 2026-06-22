@@ -117,6 +117,43 @@ describe("gameMappers", () => {
     ).toThrow(/Unsupported tile type/);
   });
 
+  it("maps special tiles, captured pieces, and default piece levels safely", () => {
+    const dto: GameSessionDto = {
+      ...gameSessionFixture(),
+      tiles: gameSessionFixture().tiles.map((tile) =>
+        tile.id === "tile-1-0" ? { ...tile, tileType: "special" as never, occupyingPieceId: null } : tile,
+      ),
+      pieces: gameSessionFixture().pieces.map((piece) =>
+        piece.id === "piece-2"
+          ? { ...piece, currentTileId: null, isCaptured: true, capturedAtUtc: "2026-06-21T10:00:00.000Z", level: 0 }
+          : piece,
+      ),
+    };
+
+    const session = mapGameSession(dto);
+
+    expect(session.tiles.find((tile) => tile.id === "tile-1-0")?.tileType).toBe("Special");
+    expect(session.pieces.find((piece) => piece.id === "piece-2")).toMatchObject({
+      currentTileId: null,
+      isCaptured: true,
+      level: 1,
+      capturedAtUtc: "2026-06-21T10:00:00.000Z",
+    });
+  });
+
+  it("rejects active pieces that have no occupied tile while allowing captured pieces off-board", () => {
+    const session = gameSessionFixture();
+
+    expect(() =>
+      mapGameSession({
+        ...session,
+        pieces: session.pieces.map((piece) =>
+          piece.id === "piece-1" ? { ...piece, currentTileId: null, isCaptured: false } : piece,
+        ),
+      }),
+    ).toThrow(/Piece response is missing required fields/);
+  });
+
   it("blocks malformed board snapshots", () => {
     const session = gameSessionFixture();
     expect(() => mapGameSession({ ...session, tiles: session.tiles.slice(1) })).toThrow(/missing board tiles/);

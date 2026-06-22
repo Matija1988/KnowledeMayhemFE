@@ -1,6 +1,6 @@
 export type GameSessionStatus = "InProgress" | "Completed" | "Cancelled";
 
-export type TileType = "Normal" | "Blocked";
+export type TileType = "Normal" | "Blocked" | "Special";
 
 export type GamePlayer = {
   id: string;
@@ -28,9 +28,10 @@ export type Piece = {
   id: string;
   gameSessionId: string;
   ownerPlayerId: string;
-  currentTileId: string;
+  currentTileId: string | null;
   level: number;
   isCaptured: boolean;
+  capturedAtUtc?: string | null;
   createdAtUtc: string;
 };
 
@@ -76,7 +77,16 @@ export type ConnectionState = {
   lastUpdatedAtUtc: string | null;
 };
 
-export type GameOperation = "readGame" | "movePiece" | "startConquest" | "submitConquest" | "reconnectGame";
+export type GameOperation =
+  | "readGame"
+  | "movePiece"
+  | "startConquest"
+  | "submitConquest"
+  | "startBattle"
+  | "submitBattle"
+  | "startSpecialField"
+  | "submitSpecialField"
+  | "reconnectGame";
 
 export type GameActionError = {
   title: string;

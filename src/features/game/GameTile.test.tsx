@@ -25,4 +25,24 @@ describe("GameTile", () => {
     expect(screen.getByText("Valid target")).toBeInTheDocument();
     expect(screen.getByText("cat-0")).toBeInTheDocument();
   });
+
+  it("labels and renders special fields as targetable non-color-only board state", () => {
+    const session = gameSessionFixture();
+    const tile = { ...session.tiles[1], tileType: "Special" as const };
+
+    render(
+      <GameTile
+        tile={tile}
+        piece={null}
+        player={null}
+        pieceOwner={null}
+        isCurrentUserPiece={false}
+        isValidTarget
+      />,
+    );
+
+    expect(screen.getByRole("gridcell")).toHaveAccessibleName(/special field/i);
+    expect(screen.getByText(/special/i)).toBeInTheDocument();
+    expect(screen.getByText("Valid target")).toBeInTheDocument();
+  });
 });

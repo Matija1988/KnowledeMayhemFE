@@ -6,6 +6,8 @@ import { useGameSession } from "./useGameSession";
 import { useGameStore } from "../../stores/gameStore";
 import { QuestionModal } from "../conquest/QuestionModal";
 import { selectHasPendingConquest } from "../../stores/conquestStore";
+import { BattleQuestionModal } from "../battle/BattleQuestionModal";
+import { selectHasPendingBattle } from "../../stores/battleStore";
 
 export function GameSessionPage() {
   const { sessionId } = useParams();
@@ -22,11 +24,16 @@ export function GameSessionPage() {
     selectAnswer,
     submitAnswer,
     expireConquest,
+    battleState,
+    selectBattleAnswer,
+    submitBattleAnswer,
+    expireBattle,
   } = useGameSession(sessionId);
   const liveMessage = useGameStore((state) => state.liveMessage);
   const candidateTargets = useGameStore((state) => state.candidateTargets);
   const currentPlayerId = session?.players.find((player) => player.userId === currentUserId)?.id ?? null;
   const conquestPending = selectHasPendingConquest(conquestState);
+  const battlePending = selectHasPendingBattle(battleState);
 
   if (isLoading && !session && !blockingError) {
     return (
@@ -70,7 +77,7 @@ export function GameSessionPage() {
           currentUserId={currentUserId}
           selectedPieceId={selectedPieceId}
           candidateTargets={candidateTargets}
-          disabled={conquestPending}
+          disabled={conquestPending || battlePending}
           onPieceSelect={selectPiece}
           onTargetSelect={(target) => void moveSelectedPiece(target)}
         />
@@ -88,6 +95,19 @@ export function GameSessionPage() {
         onSelectAnswer={selectAnswer}
         onSubmitAnswer={() => void submitAnswer()}
         onExpired={expireConquest}
+      />
+      <BattleQuestionModal
+        question={battleState.question}
+        result={battleState.lastResult}
+        selectedAnswerId={battleState.selectedAnswerId}
+        pendingAnswer={battleState.pendingAnswer}
+        expiredPending={battleState.expiredPending}
+        blockingError={battleState.blockingError}
+        actingPlayerId={currentPlayerId}
+        liveMessage={battleState.liveMessage}
+        onSelectAnswer={selectBattleAnswer}
+        onSubmitAnswer={() => void submitBattleAnswer()}
+        onExpired={expireBattle}
       />
     </main>
   );

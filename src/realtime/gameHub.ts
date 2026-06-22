@@ -2,25 +2,41 @@ import * as signalR from "@microsoft/signalr";
 import { apiBaseUrl } from "../api/apiConfig";
 import type { GameActionResult, GameSession } from "../domain/game/gameTypes";
 import type { ConquestResult, GameplayQuestion, QuestionAttemptEvent } from "../domain/conquest/conquestTypes";
+import type { BattleQuestion, BattleResult } from "../domain/battle/battleTypes";
 import {
   gameEventNames,
+  isBattleQuestionEvent,
+  isBattleResultEvent,
   isConquestResultEvent,
   isGameActionResult,
   isGameMoveExecutedEvent,
   isGameSession,
+  isGameSnapshotRequiredEvent,
   isGameTileOwnershipChangedEvent,
   isGameTurnAdvancedEvent,
   isGameplayQuestionEvent,
+  isPieceCapturedEvent,
+  isPieceLeveledUpEvent,
   isQuestionAttemptEvent,
+  isSpecialFieldQuestionEvent,
+  isSpecialFieldResultEvent,
+  toBattleQuestionEvent,
+  toBattleResultEvent,
   toConquestResultEvent,
   toGameActionResultEvent,
   toGameSessionEvent,
   toGameplayQuestionEvent,
   toQuestionAttemptEvent,
+  toSpecialFieldQuestionEvent,
+  toSpecialFieldResultEvent,
   type GameMoveExecutedEventDto,
+  type GameSnapshotRequiredEventDto,
   type GameTileOwnershipChangedEventDto,
   type GameTurnAdvancedEventDto,
+  type PieceCapturedEventDto,
+  type PieceLeveledUpEventDto,
 } from "./gameEvents";
+import { recordGameTelemetry } from "./gameTelemetry";
 
 type HubLike = {
   on: (eventName: string, callback: (...args: unknown[]) => void) => void;
@@ -39,6 +55,11 @@ export type GameHubHandlers = {
   onGameplayQuestion?: (question: GameplayQuestion) => void;
   onQuestionAttempt?: (event: QuestionAttemptEvent) => void;
   onConquestResult?: (result: ConquestResult) => void;
+  onBattleQuestion?: (question: BattleQuestion) => void;
+  onBattleResult?: (result: BattleResult) => void;
+  onPieceCaptured?: (event: PieceCapturedEventDto) => void;
+  onPieceLeveledUp?: (event: PieceLeveledUpEventDto) => void;
+  onSnapshotRequired?: (event: GameSnapshotRequiredEventDto) => void;
   onPatchNeedsRefresh: () => void;
   onConnectionStatus: (status: "connected" | "reconnecting" | "disconnected") => void;
 };
@@ -78,6 +99,38 @@ export function registerGameHubHandlers(connection: HubLike, handlers: GameHubHa
         handlers.onConquestResult?.(toConquestResultEvent(payload));
         return;
       }
+      if (isBattleQuestionEvent(payload)) {
+        handlers.onBattleQuestion?.(toBattleQuestionEvent(payload));
+        return;
+      }
+      if (isSpecialFieldQuestionEvent(payload)) {
+        handlers.onBattleQuestion?.(toSpecialFieldQuestionEvent(payload));
+        return;
+      }
+      if (isSpecialFieldResultEvent(payload)) {
+        handlers.onBattleResult?.(toSpecialFieldResultEvent(payload));
+        return;
+      }
+      if (isBattleResultEvent(payload)) {
+        handlers.onBattleResult?.(toBattleResultEvent(payload));
+        return;
+      }
+      if (isPieceCapturedEvent(payload)) {
+        handlers.onPieceCaptured?.(payload);
+        return;
+      }
+      if (isPieceLeveledUpEvent(payload)) {
+        handlers.onPieceLeveledUp?.(payload);
+        return;
+      }
+      if (isGameSnapshotRequiredEvent(payload)) {
+        recordGameTelemetry("game-snapshot-required", {
+          gameSessionId: payload.gameSessionId,
+          reason: payload.reason,
+        });
+        handlers.onSnapshotRequired?.(payload);
+        return;
+      }
       if (isGameplayQuestionEvent(payload)) {
         handlers.onGameplayQuestion?.(toGameplayQuestionEvent(payload));
         return;
@@ -107,9 +160,11 @@ export function registerGameHubHandlers(connection: HubLike, handlers: GameHubHa
         return;
       }
     } catch {
+      recordGameTelemetry("game-realtime-payload-invalid", { payloadType: payloadType(payload) });
       handlers.onPatchNeedsRefresh();
       return;
     }
+    recordGameTelemetry("game-realtime-payload-unmapped", { payloadType: payloadType(payload) });
     handlers.onPatchNeedsRefresh();
   };
 
@@ -133,8 +188,37 @@ export function registerGameHubHandlers(connection: HubLike, handlers: GameHubHa
     "ConquestFailed",
     gameEventNames.conquestExpired,
     "ConquestExpired",
+    gameEventNames.battleAttemptStarted,
+    gameEventNames.battleQuestionIssued,
+    gameEventNames.battleProgressUpdated,
+    gameEventNames.battleSucceeded,
+    gameEventNames.battleFailed,
+    gameEventNames.specialFieldAttemptStarted,
+    gameEventNames.specialFieldQuestionIssued,
+    gameEventNames.specialFieldProgressUpdated,
+    gameEventNames.specialFieldConquered,
+    gameEventNames.specialFieldFailed,
+    gameEventNames.pieceCaptured,
+    gameEventNames.pieceLeveledUp,
+    gameEventNames.snapshotRequired,
   ].forEach((eventName) => connection.on(eventName, handlePayload));
-  connection.onreconnecting?.(() => handlers.onConnectionStatus("reconnecting"));
-  connection.onreconnected?.(() => handlers.onConnectionStatus("connected"));
-  connection.onclose?.(() => handlers.onConnectionStatus("disconnected"));
+  connection.onreconnecting?.(() => {
+    recordGameTelemetry("game-hub-reconnecting");
+    handlers.onConnectionStatus("reconnecting");
+  });
+  connection.onreconnected?.(() => {
+    recordGameTelemetry("game-hub-reconnected");
+    handlers.onConnectionStatus("connected");
+  });
+  connection.onclose?.(() => {
+    recordGameTelemetry("game-hub-disconnected");
+    handlers.onConnectionStatus("disconnected");
+  });
+}
+
+function payloadType(payload: unknown): string {
+  if (Array.isArray(payload)) {
+    return "array";
+  }
+  return payload === null ? "null" : typeof payload;
 }

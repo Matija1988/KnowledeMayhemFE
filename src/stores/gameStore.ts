@@ -10,6 +10,8 @@ import type {
   Piece,
 } from "../domain/game/gameTypes";
 import type { ConquestResult } from "../domain/conquest/conquestTypes";
+import type { BattleResult } from "../domain/battle/battleTypes";
+import { recordGameTelemetry } from "../realtime/gameTelemetry";
 
 type PendingMove = {
   pieceId: string;
@@ -28,6 +30,7 @@ type GameStore = {
   pendingMove: PendingMove;
   blockingError: BlockingGameError | null;
   liveMessage: string;
+  lastSequence: number;
   setSession: (session: GameSession | null) => void;
   setBlockingError: (error: BlockingGameError | null) => void;
   beginOperation: (operation: GameOperation) => void;
@@ -41,6 +44,9 @@ type GameStore = {
   applyTileOwnershipPatch: (gameSessionId: string, tileId: string, ownerPlayerId: string | null) => void;
   applyTurnPatch: (gameSessionId: string, currentTurnPlayerId: string | null, turnNumber: number) => void;
   applyConquestResult: (result: ConquestResult) => boolean;
+  applyBattleResult: (result: BattleResult) => boolean;
+  applyPieceCapturedPatch: (gameSessionId: string, pieceId: string, removedFromTileId: string | null, sequence?: number | null) => void;
+  applyPieceLeveledPatch: (gameSessionId: string, pieceId: string, newLevel: number, sequence?: number | null) => void;
   requestSnapshotRefresh: (message?: string) => void;
   resetGame: () => void;
 };
@@ -69,6 +75,7 @@ export const useGameStore = create<GameStore>((set) => ({
   pendingMove: null,
   blockingError: null,
   liveMessage: "",
+  lastSequence: 0,
   setSession: (session) =>
     set({
       session,
@@ -256,6 +263,162 @@ export const useGameStore = create<GameStore>((set) => ({
     });
     return applied;
   },
+  applyBattleResult: (result) => {
+    let applied = false;
+    set((state) => {
+      if (!state.session || state.session.id !== result.gameSessionId) {
+        return {};
+      }
+      if (result.sequence !== null && result.sequence < state.lastSequence) {
+        recordGameTelemetry("game-stale-event-rejected", {
+          gameSessionId: result.gameSessionId,
+          attemptKind: result.attemptKind,
+          attemptId: result.attemptId,
+          eventSequence: result.sequence,
+          currentSequence: state.lastSequence,
+        });
+        return {};
+      }
+
+      if (result.session) {
+        applied = true;
+        return {
+          session: result.session,
+          ...normalizeSession(result.session),
+          selectedPieceId: null,
+          candidateTargets: [],
+          pendingOperation: null,
+          pendingMove: null,
+          blockingError: blockingErrorFromStatus(result.session.status),
+          lastSequence: Math.max(state.lastSequence, result.sequence ?? state.lastSequence),
+          liveMessage: battleLiveMessage(result),
+        };
+      }
+
+      const movedPieceId = result.movedPieceId;
+      const sourceTileId = result.sourceTileId;
+      const targetTileId = result.targetTileId;
+      if (!movedPieceId || !sourceTileId || !targetTileId) {
+        return {
+          pendingOperation: "reconnectGame",
+          selectedPieceId: null,
+          candidateTargets: [],
+          blockingError: {
+            title: "Game board problem",
+            message: "The battle result references board data that is no longer loaded. Refreshing the game state.",
+            reason: "conquestDesync",
+          },
+          liveMessage: "Refreshing game state after battle result.",
+        };
+      }
+
+      const success = result.status === "Succeeded";
+      const movingPiece = state.session.pieces.find((piece) => piece.id === movedPieceId);
+      const pieces = state.session.pieces.map((piece) => {
+        if (success && result.capturedPieceId && piece.id === result.capturedPieceId) {
+          return { ...piece, currentTileId: null, isCaptured: true, capturedAtUtc: new Date().toISOString() };
+        }
+        if (success && piece.id === movedPieceId) {
+          return {
+            ...piece,
+            currentTileId: targetTileId,
+            level: result.leveledPieceId === piece.id && result.newLevel ? result.newLevel : piece.level,
+          };
+        }
+        if (result.leveledPieceId === piece.id && result.newLevel) {
+          return { ...piece, level: result.newLevel };
+        }
+        return piece;
+      });
+      const tiles = state.session.tiles.map((tile) => {
+        if (success && tile.id === sourceTileId) {
+          return { ...tile, occupyingPieceId: null };
+        }
+        if (success && tile.id === targetTileId) {
+          return {
+            ...tile,
+            occupyingPieceId: movedPieceId,
+            ownerPlayerId: result.targetOwnerPlayerId ?? movingPiece?.ownerPlayerId ?? tile.ownerPlayerId,
+          };
+        }
+        return tile;
+      });
+      const session = {
+        ...state.session,
+        pieces,
+        tiles,
+        currentTurnPlayerId: result.nextTurnPlayerId ?? state.session.currentTurnPlayerId,
+        turnNumber: result.turnNumber ?? state.session.turnNumber,
+      };
+      applied = true;
+      return {
+        session,
+        ...normalizeSession(session),
+        selectedPieceId: null,
+        candidateTargets: [],
+        pendingOperation: null,
+        pendingMove: null,
+        lastSequence: Math.max(state.lastSequence, result.sequence ?? state.lastSequence),
+        liveMessage: battleLiveMessage(result),
+      };
+    });
+    return applied;
+  },
+  applyPieceCapturedPatch: (gameSessionId, pieceId, removedFromTileId, sequence = null) =>
+    set((state) => {
+      if (!state.session || state.session.id !== gameSessionId || (sequence !== null && sequence < state.lastSequence)) {
+        if (state.session?.id === gameSessionId && sequence !== null && sequence < state.lastSequence) {
+          recordGameTelemetry("game-stale-event-rejected", {
+            gameSessionId,
+            pieceId,
+            eventSequence: sequence,
+            currentSequence: state.lastSequence,
+            eventType: "piece-captured",
+          });
+        }
+        return {};
+      }
+      const session = {
+        ...state.session,
+        pieces: state.session.pieces.map((piece) =>
+          piece.id === pieceId ? { ...piece, currentTileId: null, isCaptured: true, capturedAtUtc: new Date().toISOString() } : piece,
+        ),
+        tiles: state.session.tiles.map((tile) =>
+          removedFromTileId && tile.id === removedFromTileId ? { ...tile, occupyingPieceId: null } : tile,
+        ),
+      };
+      return {
+        session,
+        ...normalizeSession(session),
+        lastSequence: Math.max(state.lastSequence, sequence ?? state.lastSequence),
+        liveMessage: "Piece captured.",
+      };
+    }),
+  applyPieceLeveledPatch: (gameSessionId, pieceId, newLevel, sequence = null) =>
+    set((state) => {
+      if (!state.session || state.session.id !== gameSessionId || (sequence !== null && sequence < state.lastSequence)) {
+        if (state.session?.id === gameSessionId && sequence !== null && sequence < state.lastSequence) {
+          recordGameTelemetry("game-stale-event-rejected", {
+            gameSessionId,
+            pieceId,
+            eventSequence: sequence,
+            currentSequence: state.lastSequence,
+            eventType: "piece-leveled",
+          });
+        }
+        return {};
+      }
+      const session = {
+        ...state.session,
+        pieces: state.session.pieces.map((piece) => (piece.id === pieceId ? { ...piece, level: newLevel } : piece)),
+      };
+      return {
+        session,
+        ...normalizeSession(session),
+        lastSequence: Math.max(state.lastSequence, sequence ?? state.lastSequence),
+        liveMessage: `Piece reached level ${newLevel}.`,
+      };
+    }),
   requestSnapshotRefresh: (message = "Refreshing game state.") =>
     set({
       pendingOperation: "reconnectGame",
@@ -274,6 +437,7 @@ export const useGameStore = create<GameStore>((set) => ({
       pendingMove: null,
       blockingError: null,
       liveMessage: "",
+      lastSequence: 0,
     }),
 }));
 
@@ -331,4 +495,19 @@ function conquestLiveMessage(result: ConquestResult): string {
     return `Conquest cancelled. Turn ${result.turnNumber}.`;
   }
   return `Incorrect answer. Turn ${result.turnNumber}.`;
+}
+
+function battleLiveMessage(result: BattleResult): string {
+  const label = result.attemptKind === "Battle" ? "Battle" : "Special field";
+  const turn = result.turnNumber ? ` Turn ${result.turnNumber}.` : "";
+  if (result.status === "Succeeded") {
+    return `${label} succeeded.${turn}`;
+  }
+  if (result.status === "Expired") {
+    return `${label} expired.${turn}`;
+  }
+  if (result.status === "Cancelled") {
+    return `${label} cancelled.${turn}`;
+  }
+  return `${label} failed.${turn}`;
 }

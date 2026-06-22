@@ -9,7 +9,11 @@ type GamePieceProps = {
 
 function GamePieceComponent({ piece, owner, isCurrentUserPiece }: GamePieceProps) {
   if (piece.isCaptured) {
-    return null;
+    return (
+      <span className="game-piece game-piece--captured" aria-label="Captured piece">
+        Captured
+      </span>
+    );
   }
 
   const orderLabel = owner?.playerOrder ?? "?";
@@ -19,6 +23,7 @@ function GamePieceComponent({ piece, owner, isCurrentUserPiece }: GamePieceProps
       aria-label={`${owner?.displayName ?? owner?.userId ?? "Unknown player"} piece level ${piece.level}`}
     >
       P{orderLabel}
+      <span className="game-piece__level">L{piece.level}</span>
     </span>
   );
 }

@@ -9,6 +9,8 @@ import {
   type QuestionAttemptEventDto,
 } from "../domain/conquest/conquestMappers";
 import type { ConquestResult, GameplayQuestion, QuestionAttemptEvent } from "../domain/conquest/conquestTypes";
+import { mapBattleQuestion, mapBattleResult, type BattleQuestionDto, type BattleResultDto } from "../domain/battle/battleMappers";
+import type { BattleQuestion, BattleResult } from "../domain/battle/battleTypes";
 
 export const gameEventNames = {
   sessionCreated: "GameSessionCreatedEvent",
@@ -24,6 +26,19 @@ export const gameEventNames = {
   conquestSucceeded: "GameConquestSucceededEvent",
   conquestFailed: "GameConquestFailedEvent",
   conquestExpired: "GameConquestExpiredEvent",
+  battleAttemptStarted: "BattleAttemptStartedEvent",
+  battleQuestionIssued: "BattleQuestionIssuedEvent",
+  battleProgressUpdated: "BattleProgressUpdatedEvent",
+  battleSucceeded: "BattleSucceededEvent",
+  battleFailed: "BattleFailedEvent",
+  specialFieldAttemptStarted: "SpecialFieldAttemptStartedEvent",
+  specialFieldQuestionIssued: "SpecialFieldQuestionIssuedEvent",
+  specialFieldProgressUpdated: "SpecialFieldProgressUpdatedEvent",
+  specialFieldConquered: "SpecialFieldConqueredEvent",
+  specialFieldFailed: "SpecialFieldFailedEvent",
+  pieceCaptured: "PieceCapturedEvent",
+  pieceLeveledUp: "PieceLeveledUpEvent",
+  snapshotRequired: "GameSnapshotRequiredEvent",
 } as const;
 
 export type GameMoveExecutedEventDto = {
@@ -53,6 +68,28 @@ export type GameTurnAdvancedEventDto = {
   turn?: GameActionResultDto["turn"];
 };
 
+export type PieceCapturedEventDto = {
+  gameSessionId: string;
+  sequence?: number;
+  pieceId: string;
+  removedFromTileId?: string | null;
+  capturedAtUtc?: string;
+  capturedByPieceId?: string;
+};
+
+export type PieceLeveledUpEventDto = {
+  gameSessionId: string;
+  sequence?: number;
+  pieceId: string;
+  newLevel: number;
+};
+
+export type GameSnapshotRequiredEventDto = {
+  gameSessionId: string;
+  sequence?: number;
+  reason?: string;
+};
+
 export function toGameSessionEvent(payload: GameSessionDto): GameSession {
   return mapGameSession(payload);
 }
@@ -71,6 +108,22 @@ export function toQuestionAttemptEvent(payload: QuestionAttemptEventDto): Questi
 
 export function toConquestResultEvent(payload: ConquestResultDto): ConquestResult {
   return mapConquestResult(payload);
+}
+
+export function toBattleQuestionEvent(payload: BattleQuestionDto): BattleQuestion {
+  return mapBattleQuestion(payload, { attemptKind: "Battle" });
+}
+
+export function toSpecialFieldQuestionEvent(payload: BattleQuestionDto): BattleQuestion {
+  return mapBattleQuestion(payload, { attemptKind: "SpecialField" });
+}
+
+export function toBattleResultEvent(payload: BattleResultDto): BattleResult {
+  return mapBattleResult(payload, { attemptKind: "Battle" });
+}
+
+export function toSpecialFieldResultEvent(payload: BattleResultDto): BattleResult {
+  return mapBattleResult(payload, { attemptKind: "SpecialField" });
 }
 
 export function isGameActionResult(payload: unknown): payload is GameActionResultDto {
@@ -138,6 +191,7 @@ export function isConquestResultEvent(payload: unknown): payload is ConquestResu
   return (
     typeof payload === "object" &&
     payload !== null &&
+    !Array.isArray((payload as GameplayQuestionDto).answerOptions) &&
     typeof (payload as ConquestResultDto).questionAttemptId === "string" &&
     typeof (payload as ConquestResultDto).turnNumber === "number" &&
     (
@@ -145,5 +199,77 @@ export function isConquestResultEvent(payload: unknown): payload is ConquestResu
       typeof (payload as ConquestResultDto).toTileId === "string" ||
       typeof (payload as ConquestResultDto).targetTileId === "string"
     )
+  );
+}
+
+export function isBattleQuestionEvent(payload: unknown): payload is BattleQuestionDto {
+  return (
+    typeof payload === "object" &&
+    payload !== null &&
+    typeof (payload as BattleQuestionDto).battleAttemptId === "string" &&
+    typeof (payload as BattleQuestionDto).questionAttemptId === "string" &&
+    Array.isArray((payload as BattleQuestionDto).answerOptions)
+  );
+}
+
+export function isSpecialFieldQuestionEvent(payload: unknown): payload is BattleQuestionDto {
+  return (
+    typeof payload === "object" &&
+    payload !== null &&
+    typeof (payload as BattleQuestionDto).specialFieldAttemptId === "string" &&
+    typeof (payload as BattleQuestionDto).questionAttemptId === "string" &&
+    Array.isArray((payload as BattleQuestionDto).answerOptions)
+  );
+}
+
+export function isBattleResultEvent(payload: unknown): payload is BattleResultDto {
+  return (
+    typeof payload === "object" &&
+    payload !== null &&
+    typeof (payload as BattleResultDto).battleAttemptId === "string" &&
+    !Array.isArray((payload as BattleQuestionDto).answerOptions) &&
+    (typeof (payload as BattleResultDto).status === "string" || typeof (payload as BattleResultDto).resultStatus === "string")
+  );
+}
+
+export function isSpecialFieldResultEvent(payload: unknown): payload is BattleResultDto {
+  return (
+    typeof payload === "object" &&
+    payload !== null &&
+    typeof (payload as BattleResultDto).specialFieldAttemptId === "string" &&
+    !Array.isArray((payload as BattleQuestionDto).answerOptions) &&
+    (typeof (payload as BattleResultDto).status === "string" || typeof (payload as BattleResultDto).resultStatus === "string")
+  );
+}
+
+export function isPieceCapturedEvent(payload: unknown): payload is PieceCapturedEventDto {
+  return (
+    typeof payload === "object" &&
+    payload !== null &&
+    typeof (payload as PieceCapturedEventDto).gameSessionId === "string" &&
+    typeof (payload as PieceCapturedEventDto).pieceId === "string" &&
+    ("removedFromTileId" in payload || "capturedAtUtc" in payload || "capturedByPieceId" in payload)
+  );
+}
+
+export function isPieceLeveledUpEvent(payload: unknown): payload is PieceLeveledUpEventDto {
+  return (
+    typeof payload === "object" &&
+    payload !== null &&
+    typeof (payload as PieceLeveledUpEventDto).gameSessionId === "string" &&
+    typeof (payload as PieceLeveledUpEventDto).pieceId === "string" &&
+    typeof (payload as PieceLeveledUpEventDto).newLevel === "number"
+  );
+}
+
+export function isGameSnapshotRequiredEvent(payload: unknown): payload is GameSnapshotRequiredEventDto {
+  return (
+    typeof payload === "object" &&
+    payload !== null &&
+    typeof (payload as GameSnapshotRequiredEventDto).gameSessionId === "string" &&
+    !("turnNumber" in payload) &&
+    !("pieceId" in payload) &&
+    !("tileId" in payload) &&
+    ("reason" in payload || "minimumSequence" in payload)
   );
 }
