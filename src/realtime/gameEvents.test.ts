@@ -96,6 +96,18 @@ describe("gameEvents", () => {
       targetTileId: "tile-1-0",
       turnNumber: 2,
     };
+    const specialConqueredResult: BattleResultDto = {
+      specialFieldAttemptId: "special-1",
+      gameSessionId: "session-1",
+      pieceId: "piece-1",
+      sourceTileId: "tile-0-0",
+      targetTileId: "tile-1-0",
+      targetOwnerPlayerId: "player-1",
+      status: "Succeeded",
+      newLevel: 2,
+      nextTurnPlayerId: "player-2",
+      turnNumber: 2,
+    };
 
     expect(gameEventNames.battleQuestionIssued).toBe("BattleQuestionIssuedEvent");
     expect(isBattleQuestionEvent(battleQuestion)).toBe(true);
@@ -104,10 +116,17 @@ describe("gameEvents", () => {
     expect(isSpecialFieldResultEvent(specialQuestion)).toBe(false);
     expect(isBattleResultEvent(battleResult)).toBe(true);
     expect(isSpecialFieldResultEvent(specialResult)).toBe(true);
+    expect(isSpecialFieldResultEvent(specialConqueredResult)).toBe(true);
     expect(toBattleQuestionEvent(battleQuestion).attemptKind).toBe("Battle");
     expect(toSpecialFieldQuestionEvent(specialQuestion).progress.requiredCorrectAnswers).toBe(3);
     expect(toBattleResultEvent(battleResult).status).toBe("Succeeded");
     expect(toSpecialFieldResultEvent(specialResult).attemptKind).toBe("SpecialField");
+    expect(toSpecialFieldResultEvent(specialConqueredResult)).toMatchObject({
+      attemptKind: "SpecialField",
+      status: "Succeeded",
+      movedPieceId: "piece-1",
+      targetOwnerPlayerId: "player-1",
+    });
   });
 
   it("guards capture, level, and snapshot-required events without swallowing turn events", () => {
