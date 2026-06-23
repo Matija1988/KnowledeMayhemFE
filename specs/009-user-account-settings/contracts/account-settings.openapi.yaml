@@ -1,0 +1,307 @@
+openapi: 3.0.3
+info:
+  title: Knowledge Mayhem Account Settings API
+  version: 0.1.0
+  description: Current-user account settings endpoints for profile retrieval, identity updates, password changes, and self-deactivation.
+servers:
+  - url: "{apiBaseUrl}"
+    variables:
+      apiBaseUrl:
+        default: http://localhost:5168
+security:
+  - bearerAuth: []
+paths:
+  /api/identity/users/me:
+    get:
+      summary: Get current user profile
+      operationId: getCurrentUserProfile
+      responses:
+        "200":
+          description: Current authenticated active user's sanitized profile.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentUserProfile"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    put:
+      summary: Update current user's username and email
+      operationId: updateCurrentUserIdentity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCurrentUserIdentityRequest"
+      responses:
+        "200":
+          description: Updated sanitized profile.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentUserProfile"
+        "400":
+          $ref: "#/components/responses/ValidationProblem"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/identity/users/me/password:
+    put:
+      summary: Change current user's password
+      operationId: changeCurrentUserPassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangeCurrentUserPasswordRequest"
+      responses:
+        "200":
+          description: Password changed; other active sessions revoked, current session remains active.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PasswordChangeResponse"
+        "400":
+          $ref: "#/components/responses/ValidationProblem"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+  /api/identity/users/me/deactivation:
+    post:
+      summary: Deactivate current user's account
+      operationId: deactivateCurrentUserAccount
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeactivateCurrentUserRequest"
+      responses:
+        "200":
+          description: Account deactivated and current session invalidated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountDeactivationResponse"
+        "400":
+          $ref: "#/components/responses/ValidationProblem"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    CurrentUserProfile:
+      type: object
+      required:
+        - id
+        - username
+        - email
+        - roleId
+        - role
+        - createdAt
+        - isActive
+      properties:
+        id:
+          type: string
+          format: uuid
+        username:
+          type: string
+          maxLength: 50
+        email:
+          type: string
+          format: email
+          maxLength: 255
+        roleId:
+          type: string
+          format: uuid
+        role:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+        isActive:
+          type: boolean
+        deactivatedAt:
+          type: string
+          format: date-time
+          nullable: true
+    UpdateCurrentUserIdentityRequest:
+      type: object
+      required:
+        - username
+        - email
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 50
+        email:
+          type: string
+          format: email
+          minLength: 1
+          maxLength: 255
+    ChangeCurrentUserPasswordRequest:
+      type: object
+      required:
+        - currentPassword
+        - newPassword
+        - confirmNewPassword
+      properties:
+        currentPassword:
+          type: string
+          format: password
+        newPassword:
+          type: string
+          format: password
+        confirmNewPassword:
+          type: string
+          format: password
+    PasswordChangeResponse:
+      type: object
+      required:
+        - status
+        - changedAtUtc
+        - otherSessionsRevoked
+      properties:
+        status:
+          type: string
+          example: passwordChanged
+        changedAtUtc:
+          type: string
+          format: date-time
+        otherSessionsRevoked:
+          type: boolean
+    DeactivateCurrentUserRequest:
+      type: object
+      required:
+        - password
+        - confirmationText
+      properties:
+        password:
+          type: string
+          format: password
+        confirmationText:
+          type: string
+          enum:
+            - DEACTIVATE
+    AccountDeactivationResponse:
+      type: object
+      required:
+        - status
+        - deactivatedAtUtc
+        - sessionInvalidated
+      properties:
+        status:
+          type: string
+          example: deactivated
+        deactivatedAtUtc:
+          type: string
+          format: date-time
+        sessionInvalidated:
+          type: boolean
+        lobby:
+          $ref: "#/components/schemas/LogoutLobbyOutcome"
+        game:
+          $ref: "#/components/schemas/LogoutGameOutcome"
+    LogoutLobbyOutcome:
+      type: object
+      nullable: true
+      properties:
+        lobbyId:
+          type: string
+          format: uuid
+        outcome:
+          type: string
+        newHostUserId:
+          type: string
+          format: uuid
+          nullable: true
+    LogoutGameOutcome:
+      type: object
+      nullable: true
+      properties:
+        gameSessionId:
+          type: string
+          format: uuid
+        forfeitedPlayerId:
+          type: string
+          format: uuid
+        eliminatedAtUtc:
+          type: string
+          format: date-time
+        eliminationReason:
+          type: string
+          example: Forfeit
+        pendingAttemptCancelled:
+          type: boolean
+        gameCompleted:
+          type: boolean
+        winnerPlayerId:
+          type: string
+          format: uuid
+          nullable: true
+        endedAtUtc:
+          type: string
+          format: date-time
+          nullable: true
+        nextTurnPlayerId:
+          type: string
+          format: uuid
+          nullable: true
+    ProblemDetails:
+      type: object
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        code:
+          type: string
+        traceId:
+          type: string
+  responses:
+    Unauthorized:
+      description: Missing, expired, revoked, or invalid authentication token.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+    Forbidden:
+      description: Authenticated account is inactive or cannot perform this action.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+    ValidationProblem:
+      description: User-correctable validation failure.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+    Conflict:
+      description: Username or email uniqueness conflict.
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"

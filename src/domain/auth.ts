@@ -89,6 +89,10 @@ export type LoadingState = {
     | "createQuestion"
     | "updateQuestion"
     | "deleteQuestion"
+    | "readAccountSettings"
+    | "updateAccountIdentity"
+    | "changePassword"
+    | "deactivateAccount"
     | null;
 };
 

@@ -2,7 +2,7 @@ import { Link, NavLink, Outlet } from "react-router-dom";
 import { getUserRoleFromJwt } from "../../domain/auth";
 import { useAuthStore } from "../../stores/authStore";
 import { Badge } from "../../components/ui/Badge";
-import { LogoutButton } from "../auth/LogoutButton";
+import { AccountMenu } from "../auth/AccountMenu";
 
 export function QuestionBankLayout() {
   const accessToken = useAuthStore((state) => state.accessToken);
@@ -20,7 +20,7 @@ export function QuestionBankLayout() {
             Player area
           </Link>
           <Badge tone={role === "Admin" ? "success" : "info"}>{role}</Badge>
-          <LogoutButton />
+          <AccountMenu showRole={false} />
         </div>
       </header>
       <nav className="question-bank-nav" aria-label="Question bank navigation">

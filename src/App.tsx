@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { ErrorModal } from "./components/ErrorModal";
 import { LoadingSpinner } from "./components/LoadingSpinner";
 import { ToastProvider } from "./components/ToastProvider";
+import { AccountSettingsPage } from "./features/accountSettings/AccountSettingsPage";
 import { LoginPage } from "./features/auth/LoginPage";
 import { GameSessionPage } from "./features/game/GameSessionPage";
 import { CategoryListPage } from "./features/questionBank/CategoryListPage";
@@ -40,6 +41,14 @@ export function App() {
           element={
             <ProtectedRoute>
               <GameSessionPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/account/settings"
+          element={
+            <ProtectedRoute>
+              <AccountSettingsPage />
             </ProtectedRoute>
           }
         />
