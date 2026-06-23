@@ -3,6 +3,7 @@ import type { InitialGameState, Lobby, LobbyPlayer, StartLobbyResult } from "../
 
 export const lobbyEventNames = {
   snapshot: "LobbySnapshot",
+  setupChanged: "LobbySetupChanged",
   playerJoined: "LobbyPlayerJoinedEvent",
   playerLeft: "LobbyPlayerLeftEvent",
   hostChanged: "HostChanged",
@@ -30,6 +31,7 @@ export type LobbyStartedEventDto = {
   lobbyId: string;
   sessionId: string;
   initialState?: InitialGameState;
+  orderedPlayerIds?: string[];
 };
 
 export type LobbyStartedEvent = {
@@ -39,8 +41,32 @@ export type LobbyStartedEvent = {
   lobby: Lobby | null;
 };
 
+export type LobbySetupChangedEventDto = {
+  lobby?: LobbyDto | null;
+  reason?: string | null;
+};
+
+export type LobbySetupChangedEvent = {
+  lobby: Lobby;
+  reason: string;
+};
+
 export function toLobbyEvent(payload: LobbyDto): Lobby {
   return mapLobby(payload);
+}
+
+export function toLobbySetupChangedEvent(payload: LobbySetupChangedEventDto | LobbyDto): LobbySetupChangedEvent {
+  if (isLobbySnapshotPayload(payload)) {
+    return { lobby: mapLobby(payload), reason: "SetupRecalculated" };
+  }
+  if (payload.lobby && isLobbySnapshotPayload(payload.lobby)) {
+    return {
+      lobby: mapLobby(payload.lobby),
+      reason: typeof payload.reason === "string" && payload.reason ? payload.reason : "SetupRecalculated",
+    };
+  }
+
+  throw new Error("Lobby setup event is missing a valid lobby snapshot.");
 }
 
 export function toStartLobbyEvent(payload: StartLobbyResultDto | LobbyStartedEventDto): StartLobbyResult | LobbyStartedEvent {
@@ -52,12 +78,26 @@ export function toStartLobbyEvent(payload: StartLobbyResultDto | LobbyStartedEve
     return {
       lobbyId: payload.lobbyId,
       sessionId: payload.sessionId,
-      initialState: payload.initialState ?? null,
+      initialState: payload.initialState ?? toInitialGameState(payload),
       lobby: null,
     };
   }
 
   throw new Error("Lobby started event is missing session handoff data.");
+}
+
+function toInitialGameState(payload: LobbyStartedEventDto): InitialGameState | null {
+  if (!payload.orderedPlayerIds) {
+    return null;
+  }
+
+  return {
+    lobbyId: payload.lobbyId,
+    orderedPlayerIds: [...payload.orderedPlayerIds],
+    createdAtUtc: new Date().toISOString(),
+    selectedCategoryIds: [],
+    playerColors: {},
+  };
 }
 
 export function isHostChangedEvent(payload: unknown): payload is HostChangedEventDto {

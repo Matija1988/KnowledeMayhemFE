@@ -42,6 +42,7 @@ export function gameSessionFixture(overrides: GameFixtureOverrides = {}): GameSe
     startedAtUtc: now,
     endedAtUtc: null,
     winnerPlayerId: null,
+    selectedCategoryIds: [],
     createdAtUtc: now,
     players: [
       {
@@ -50,6 +51,7 @@ export function gameSessionFixture(overrides: GameFixtureOverrides = {}): GameSe
         userId: "user-1",
         playerOrder: 1,
         displayName: "Alice",
+        pieceColor: null,
         isEliminated: false,
         createdAtUtc: now,
       },
@@ -59,6 +61,7 @@ export function gameSessionFixture(overrides: GameFixtureOverrides = {}): GameSe
         userId: "user-2",
         playerOrder: 2,
         displayName: "Bob",
+        pieceColor: null,
         isEliminated: false,
         createdAtUtc: now,
       },

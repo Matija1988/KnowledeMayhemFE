@@ -7,12 +7,15 @@ import {
   isLobbySnapshotPayload,
   lobbyEventNames,
   toLobbyEvent,
+  toLobbySetupChangedEvent,
   toStartLobbyEvent,
   type LobbyStartedEvent,
 } from "./lobbyEvents";
 import type { Lobby, StartLobbyResult } from "../domain/lobby/lobbyTypes";
 
 type HubLike = {
+  start?: () => Promise<unknown>;
+  stop?: () => Promise<unknown>;
   on: (eventName: string, callback: (...args: unknown[]) => void) => void;
   invoke?: (methodName: string, ...args: unknown[]) => Promise<unknown>;
   onreconnecting?: (callback: () => void) => void;
@@ -20,8 +23,16 @@ type HubLike = {
   onclose?: (callback: () => void) => void;
 };
 
+declare global {
+  interface Window {
+    __knowledgeMayhemCreateLobbyHubConnection?: (accessToken: string, baseUrl: string) => HubLike;
+  }
+}
+
 export type LobbyHubHandlers = {
   onSnapshot: (lobby: Lobby) => void;
+  onSetupChanged: (lobby: Lobby, reason: string) => void;
+  onSetupChangedMalformed?: () => void;
   onPlayerJoined: (lobby: Lobby) => void;
   onPlayerJoinedPatch: (lobbyId: string, userId: string, joinedAtUtc: string) => void;
   onPlayerLeft: (lobby: Lobby) => void;
@@ -38,6 +49,10 @@ export function getLobbyHubUrl(baseUrl = apiBaseUrl): string {
 }
 
 export function createLobbyHubConnection(accessToken: string, baseUrl = apiBaseUrl): signalR.HubConnection {
+  if (typeof window !== "undefined" && window.__knowledgeMayhemCreateLobbyHubConnection) {
+    return window.__knowledgeMayhemCreateLobbyHubConnection(accessToken, baseUrl) as signalR.HubConnection;
+  }
+
   return new signalR.HubConnectionBuilder()
     .withUrl(getLobbyHubUrl(baseUrl), {
       accessTokenFactory: () => accessToken,
@@ -57,6 +72,14 @@ export async function joinLobbyHubGroup(connection: Pick<HubLike, "invoke">, lob
 
 export function registerLobbyHubHandlers(connection: HubLike, handlers: LobbyHubHandlers): void {
   connection.on(lobbyEventNames.snapshot, (payload) => handlers.onSnapshot(toLobbyEvent(payload as never)));
+  connection.on(lobbyEventNames.setupChanged, (payload) => {
+    try {
+      const setup = toLobbySetupChangedEvent(payload as never);
+      handlers.onSetupChanged(setup.lobby, setup.reason);
+    } catch {
+      handlers.onSetupChangedMalformed?.();
+    }
+  });
   connection.on(lobbyEventNames.playerJoined, (payload) => {
     if (isLobbySnapshotPayload(payload)) {
       handlers.onPlayerJoined(toLobbyEvent(payload));

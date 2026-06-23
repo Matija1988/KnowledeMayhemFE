@@ -8,6 +8,7 @@ export type GamePlayer = {
   userId: string;
   playerOrder: number;
   displayName: string | null;
+  pieceColor: string | null;
   isEliminated: boolean;
   eliminatedAtUtc?: string | null;
   eliminationReason?: "Forfeit" | "Defeated" | "DisconnectedTimeout" | string | null;
@@ -56,6 +57,7 @@ export type GameSession = {
   startedAtUtc: string;
   endedAtUtc: string | null;
   winnerPlayerId: string | null;
+  selectedCategoryIds: string[];
   createdAtUtc: string;
   players: GamePlayer[];
   tiles: BoardTile[];

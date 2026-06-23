@@ -1,7 +1,15 @@
 import { act } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { lobbyFixture, startLobbyResultFixture } from "../tests/fixtures/lobbyFixtures";
-import { resetLobbyStoreForTests, selectIsHost, selectStartDisabledReason, useLobbyStore } from "./lobbyStore";
+import { configuredLobbyFixture } from "../tests/fixtures/lobbySetupFixtures";
+import {
+  resetLobbyStoreForTests,
+  selectCurrentPlayerColor,
+  selectIsColorUsedByAnother,
+  selectIsHost,
+  selectStartDisabledReason,
+  useLobbyStore,
+} from "./lobbyStore";
 
 describe("lobbyStore", () => {
   beforeEach(() => resetLobbyStoreForTests());
@@ -25,6 +33,18 @@ describe("lobbyStore", () => {
     expect(selectStartDisabledReason(lobbyFixture({ expiresAtUtc: "2020-01-01T00:00:00.000Z" }), "user-1", null)).toBe(
       "Lobby has expired.",
     );
+    expect(selectStartDisabledReason(configuredLobbyFixture(), "user-1", null)).toBeNull();
+    expect(selectStartDisabledReason(configuredLobbyFixture({ selectedCategoryIds: [] }), "user-1", null)).toBe(
+      "Select at least one category.",
+    );
+  });
+
+  it("derives setup color selectors", () => {
+    const lobby = configuredLobbyFixture();
+
+    expect(selectCurrentPlayerColor(lobby, "user-1")).toBe("Red");
+    expect(selectIsColorUsedByAnother(lobby, "user-1", "Blue")).toBe(true);
+    expect(selectIsColorUsedByAnother(lobby, "user-1", "Red")).toBe(false);
   });
 
   it("stores start handoff data", () => {
@@ -41,6 +61,7 @@ describe("lobbyStore", () => {
     act(() => {
       useLobbyStore.getState().applyPlayerJoined(lobby, "user-2");
       useLobbyStore.getState().applyHostChanged("user-2");
+      useLobbyStore.getState().applySetupChanged(configuredLobbyFixture(), "PlayerReadyChanged");
       useLobbyStore.getState().applyLobbyCancelled({ ...lobby, hostUserId: "user-2", status: "Cancelled" });
     });
 

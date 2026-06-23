@@ -1,0 +1,313 @@
+openapi: 3.0.3
+info:
+  title: Lobby Game Setup API
+  version: 0.1.0
+  description: Planning contract for configuring game setup before lobby start.
+paths:
+  /api/lobbies/{lobbyId}/setup/categories:
+    put:
+      summary: Replace selected question categories for a lobby
+      description: Host-only operation. Resets readiness for all players.
+      parameters:
+        - $ref: "#/components/parameters/LobbyId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLobbyCategoriesRequest"
+      responses:
+        "200":
+          description: Updated lobby snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lobby"
+        "400":
+          $ref: "#/components/responses/ValidationProblem"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/lobbies/{lobbyId}/setup/color:
+    put:
+      summary: Select the current player's piece color
+      description: Joined-player operation. Resets readiness for that player.
+      parameters:
+        - $ref: "#/components/parameters/LobbyId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SelectPieceColorRequest"
+      responses:
+        "200":
+          description: Updated lobby snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lobby"
+        "400":
+          $ref: "#/components/responses/ValidationProblem"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/lobbies/{lobbyId}/setup/ready:
+    put:
+      summary: Set current player's readiness
+      description: Joined-player operation. Requires valid unique piece color and current setup version.
+      parameters:
+        - $ref: "#/components/parameters/LobbyId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetReadyRequest"
+      responses:
+        "200":
+          description: Updated lobby snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lobby"
+        "400":
+          $ref: "#/components/responses/ValidationProblem"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/lobbies/{lobbyId}/start:
+    post:
+      summary: Start a configured lobby
+      description: Existing endpoint extended to validate setup requirements and setup version.
+      parameters:
+        - $ref: "#/components/parameters/LobbyId"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartLobbyRequest"
+      responses:
+        "200":
+          description: Created game session handoff
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StartLobbyResult"
+        "400":
+          $ref: "#/components/responses/ValidationProblem"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+components:
+  parameters:
+    LobbyId:
+      name: lobbyId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  schemas:
+    SetupStatus:
+      type: string
+      enum: [Pending, Ready]
+    PieceColor:
+      type: string
+      enum: [Red, Blue, Green, Yellow, Purple, Orange]
+    UpdateLobbyCategoriesRequest:
+      type: object
+      required: [categoryIds]
+      properties:
+        categoryIds:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
+    SelectPieceColorRequest:
+      type: object
+      required: [pieceColor]
+      properties:
+        pieceColor:
+          $ref: "#/components/schemas/PieceColor"
+    SetReadyRequest:
+      type: object
+      required: [isReady, setupVersion]
+      properties:
+        isReady:
+          type: boolean
+        setupVersion:
+          type: integer
+          minimum: 0
+    StartLobbyRequest:
+      type: object
+      required: [setupVersion]
+      properties:
+        setupVersion:
+          type: integer
+          minimum: 0
+    Lobby:
+      type: object
+      required:
+        - id
+        - code
+        - hostUserId
+        - status
+        - maxPlayers
+        - expiresAtUtc
+        - createdAtUtc
+        - players
+        - selectedCategoryIds
+        - setupStatus
+        - setupVersion
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        hostUserId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [Open, Started, Closed, Cancelled]
+        maxPlayers:
+          type: integer
+          minimum: 2
+          maximum: 4
+        expiresAtUtc:
+          type: string
+          format: date-time
+        createdAtUtc:
+          type: string
+          format: date-time
+        startedAtUtc:
+          type: string
+          format: date-time
+          nullable: true
+        closedAtUtc:
+          type: string
+          format: date-time
+          nullable: true
+        selectedCategoryIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        setupStatus:
+          $ref: "#/components/schemas/SetupStatus"
+        setupVersion:
+          type: integer
+        updatedAtUtc:
+          type: string
+          format: date-time
+          nullable: true
+        players:
+          type: array
+          items:
+            $ref: "#/components/schemas/LobbyPlayer"
+    LobbyPlayer:
+      type: object
+      required: [userId, joinedAtUtc, isReady]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        joinedAtUtc:
+          type: string
+          format: date-time
+        selectedPieceColor:
+          allOf:
+            - $ref: "#/components/schemas/PieceColor"
+          nullable: true
+        isReady:
+          type: boolean
+    StartLobbyResult:
+      type: object
+      required: [sessionId, initialState, lobby]
+      properties:
+        sessionId:
+          type: string
+          format: uuid
+        initialState:
+          $ref: "#/components/schemas/InitialGameState"
+        lobby:
+          $ref: "#/components/schemas/Lobby"
+    InitialGameState:
+      type: object
+      required: [lobbyId, orderedPlayerIds, createdAtUtc, selectedCategoryIds, playerColors]
+      properties:
+        lobbyId:
+          type: string
+          format: uuid
+        orderedPlayerIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        createdAtUtc:
+          type: string
+          format: date-time
+        selectedCategoryIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        playerColors:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/PieceColor"
+    LobbySetupChangedEvent:
+      type: object
+      description: SignalR payload sent on the LobbySetupChanged event after setup-affecting lobby changes.
+      required: [lobbyId, lobby, reason]
+      properties:
+        lobbyId:
+          type: string
+          format: uuid
+        lobby:
+          $ref: "#/components/schemas/Lobby"
+        reason:
+          type: string
+          enum:
+            - CategoriesUpdated
+            - PlayerColorSelected
+            - PlayerReadyChanged
+            - PlayerJoined
+            - PlayerLeft
+            - HostTransferred
+  responses:
+    ValidationProblem:
+      description: Invalid setup request
+    Unauthorized:
+      description: Authentication required
+    Forbidden:
+      description: User cannot perform this lobby setup action
+    NotFound:
+      description: Lobby or category not found
+    Conflict:
+      description: Lobby is stale, closed, expired, occupied by conflicting setup state, or not start-ready

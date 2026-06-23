@@ -31,5 +31,46 @@ export const lobbyHandlers = [
   http.post("**/api/lobbies/:lobbyId/cancel", ({ params }) =>
     HttpResponse.json({ lobby: lobbyFixture({ id: String(params.lobbyId), status: "Cancelled" }) }),
   ),
+  http.put("**/api/lobbies/:lobbyId/setup/categories", async ({ params, request }) => {
+    const body = (await request.json()) as { categoryIds?: string[] };
+    if (!body.categoryIds?.length) {
+      return HttpResponse.json({ title: "Categories required", status: 400 }, { status: 400 });
+    }
+    return HttpResponse.json(
+      lobbyWithGuest({ id: String(params.lobbyId), selectedCategoryIds: body.categoryIds, setupVersion: 1 }),
+    );
+  }),
+  http.put("**/api/lobbies/:lobbyId/setup/color", async ({ params, request }) => {
+    const body = (await request.json()) as { pieceColor?: string };
+    if (body.pieceColor === "Red") {
+      return HttpResponse.json({ title: "Color unavailable", status: 409 }, { status: 409 });
+    }
+    return HttpResponse.json(
+      lobbyWithGuest({
+        id: String(params.lobbyId),
+        players: [
+          { userId: "user-1", joinedAtUtc: "2026-06-16T10:00:00.000Z", selectedPieceColor: body.pieceColor as never, isReady: false },
+          { userId: "user-2", joinedAtUtc: "2026-06-16T10:01:00.000Z", selectedPieceColor: null, isReady: false },
+        ],
+        setupVersion: 1,
+      }),
+    );
+  }),
+  http.put("**/api/lobbies/:lobbyId/setup/ready", async ({ params, request }) => {
+    const body = (await request.json()) as { isReady?: boolean; setupVersion?: number };
+    if (body.setupVersion === 99) {
+      return HttpResponse.json({ title: "Stale setup", code: "matchmaking.setup.stale-version", status: 409 }, { status: 409 });
+    }
+    return HttpResponse.json(
+      lobbyWithGuest({
+        id: String(params.lobbyId),
+        players: [
+          { userId: "user-1", joinedAtUtc: "2026-06-16T10:00:00.000Z", selectedPieceColor: "Blue", isReady: Boolean(body.isReady) },
+          { userId: "user-2", joinedAtUtc: "2026-06-16T10:01:00.000Z", selectedPieceColor: null, isReady: false },
+        ],
+        setupVersion: (body.setupVersion ?? 0) + 1,
+      }),
+    );
+  }),
   http.post("**/api/lobbies/:lobbyId/start", () => HttpResponse.json(startLobbyResultFixture())),
 ];

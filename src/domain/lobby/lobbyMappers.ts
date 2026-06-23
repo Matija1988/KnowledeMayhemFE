@@ -4,15 +4,40 @@ import type {
   LeaveLobbyResult,
   Lobby,
   LobbyPlayer,
+  LobbySetupStatus,
+  PieceColor,
   LobbyStatus,
   StartLobbyResult,
 } from "./lobbyTypes";
+import { allowedPieceColors } from "./lobbyTypes";
 
 const lobbyStatuses = new Set<LobbyStatus>(["Open", "Started", "Closed", "Cancelled"]);
+const setupStatuses = new Set<LobbySetupStatus>(["Pending", "Ready"]);
+const pieceColors = new Set<PieceColor>(allowedPieceColors);
 
-export type LobbyPlayerDto = LobbyPlayer;
-export type LobbyDto = Lobby;
-export type StartLobbyResultDto = StartLobbyResult;
+export type LobbyPlayerDto = {
+  userId: string;
+  joinedAtUtc: string;
+  selectedPieceColor?: string | null;
+  isReady?: boolean;
+};
+export type LobbyDto = Omit<Lobby, "players" | "selectedCategoryIds" | "setupStatus" | "setupVersion" | "updatedAtUtc"> & {
+  players?: LobbyPlayerDto[];
+  selectedCategoryIds?: string[] | null;
+  setupStatus?: string | null;
+  setupVersion?: number | null;
+  updatedAtUtc?: string | null;
+};
+export type StartLobbyResultDto = Omit<StartLobbyResult, "lobby" | "initialState"> & {
+  initialState: {
+    lobbyId: string;
+    orderedPlayerIds?: string[];
+    createdAtUtc: string;
+    selectedCategoryIds?: string[] | null;
+    playerColors?: Record<string, string> | null;
+  };
+  lobby: LobbyDto;
+};
 export type LeaveLobbyResultDto = LeaveLobbyResult;
 export type CancelLobbyResultDto = CancelLobbyResult;
 export type ActiveLobbyConflictDto = {
@@ -30,6 +55,11 @@ export function mapLobby(dto: LobbyDto): Lobby {
     throw new Error(`Unsupported lobby status: ${String(dto.status)}`);
   }
 
+  const setupStatus = dto.setupStatus ?? "Pending";
+  if (!setupStatuses.has(setupStatus as LobbySetupStatus)) {
+    throw new Error(`Unsupported lobby setup status: ${String(dto.setupStatus)}`);
+  }
+
   if (![2, 3, 4].includes(dto.maxPlayers)) {
     throw new Error(`Unsupported maxPlayers value: ${dto.maxPlayers}`);
   }
@@ -44,6 +74,10 @@ export function mapLobby(dto: LobbyDto): Lobby {
     createdAtUtc: dto.createdAtUtc,
     startedAtUtc: dto.startedAtUtc ?? null,
     closedAtUtc: dto.closedAtUtc ?? null,
+    selectedCategoryIds: [...(dto.selectedCategoryIds ?? [])],
+    setupStatus: setupStatus as LobbySetupStatus,
+    setupVersion: dto.setupVersion ?? 0,
+    updatedAtUtc: dto.updatedAtUtc ?? null,
     players: (dto.players ?? []).map(mapLobbyPlayer),
   };
 }
@@ -56,6 +90,8 @@ export function mapLobbyPlayer(dto: LobbyPlayerDto): LobbyPlayer {
   return {
     userId: dto.userId,
     joinedAtUtc: dto.joinedAtUtc,
+    selectedPieceColor: mapPieceColor(dto.selectedPieceColor),
+    isReady: Boolean(dto.isReady),
   };
 }
 
@@ -68,8 +104,10 @@ export function mapStartLobbyResult(dto: StartLobbyResultDto): StartLobbyResult 
     sessionId: dto.sessionId,
     initialState: {
       lobbyId: dto.initialState.lobbyId,
-      orderedPlayerIds: [...dto.initialState.orderedPlayerIds],
+      orderedPlayerIds: [...(dto.initialState.orderedPlayerIds ?? [])],
       createdAtUtc: dto.initialState.createdAtUtc,
+      selectedCategoryIds: [...(dto.initialState.selectedCategoryIds ?? [])],
+      playerColors: mapPlayerColors(dto.initialState.playerColors ?? {}),
     },
     lobby: mapLobby(dto.lobby),
   };
@@ -101,4 +139,18 @@ export function normalizeJoinCode(code: string): string {
 
 export function isLobbyExpired(lobby: Lobby, now = Date.now()): boolean {
   return new Date(lobby.expiresAtUtc).getTime() <= now;
+}
+
+function mapPieceColor(value: unknown): PieceColor | null {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+  if (!pieceColors.has(value as PieceColor)) {
+    throw new Error(`Unsupported piece color: ${String(value)}`);
+  }
+  return value as PieceColor;
+}
+
+function mapPlayerColors(value: Record<string, string>): Record<string, PieceColor> {
+  return Object.fromEntries(Object.entries(value).map(([userId, color]) => [userId, mapPieceColor(color)]).filter((entry): entry is [string, PieceColor] => entry[1] !== null));
 }

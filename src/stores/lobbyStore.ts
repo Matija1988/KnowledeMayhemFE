@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { isLobbyExpired } from "../domain/lobby/lobbyMappers";
-import type { ConnectionState, Lobby, LobbyOperation, StartLobbyResult } from "../domain/lobby/lobbyTypes";
+import { allowedPieceColors, type ConnectionState, type Lobby, type LobbyOperation, type PieceColor, type StartLobbyResult } from "../domain/lobby/lobbyTypes";
 
 type LobbyStore = {
   currentLobby: Lobby | null;
@@ -19,6 +19,7 @@ type LobbyStore = {
   applyHostChanged: (hostUserId: string) => void;
   applyLobbyStarted: (result: StartLobbyResult) => void;
   applyLobbySnapshot: (lobby: Lobby) => void;
+  applySetupChanged: (lobby: Lobby, reason?: string) => void;
   applyLobbyClosed: (lobby: Lobby | null) => void;
   applyLobbyCancelled: (lobby: Lobby | null) => void;
   clearLobby: () => void;
@@ -60,7 +61,7 @@ export const useLobbyStore = create<LobbyStore>((set) => ({
           ? state.currentLobby
           : {
               ...state.currentLobby,
-              players: [...state.currentLobby.players, { userId, joinedAtUtc }],
+              players: [...state.currentLobby.players, { userId, joinedAtUtc, selectedPieceColor: null, isReady: false }],
             },
         liveMessage: `${userId} joined the lobby.`,
       };
@@ -88,6 +89,8 @@ export const useLobbyStore = create<LobbyStore>((set) => ({
   applyLobbyStarted: (result) =>
     set({ currentLobby: result.lobby, lastStartResult: result, liveMessage: "Lobby started." }),
   applyLobbySnapshot: (lobby) => set({ currentLobby: lobby }),
+  applySetupChanged: (lobby, reason = "SetupRecalculated") =>
+    set({ currentLobby: lobby, liveMessage: toSetupLiveMessage(reason) }),
   applyLobbyClosed: (lobby) =>
     set({ currentLobby: lobby, liveMessage: "Lobby closed.", pendingOperation: null }),
   applyLobbyCancelled: (lobby) =>
@@ -136,5 +139,76 @@ export function selectStartDisabledReason(
   if (lobby.players.length > 4) {
     return "No more than 4 players can start.";
   }
+  if (lobby.selectedCategoryIds.length === 0) {
+    return "Select at least one category.";
+  }
+  if (!lobby.players.every((player) => player.selectedPieceColor)) {
+    return "Every player must select a color.";
+  }
+  if (!hasUniqueSelectedColors(lobby)) {
+    return "Every player must use a unique color.";
+  }
+  if (!lobby.players.every((player) => player.isReady)) {
+    return "Every player must be ready.";
+  }
+  if (lobby.setupStatus !== "Ready") {
+    return "Lobby setup is not ready.";
+  }
   return null;
+}
+
+export function selectUsedPieceColors(lobby: Lobby | null): PieceColor[] {
+  if (!lobby) {
+    return [];
+  }
+
+  return lobby.players.flatMap((player) => (player.selectedPieceColor ? [player.selectedPieceColor] : []));
+}
+
+export function selectCurrentLobbyPlayer(lobby: Lobby | null, currentUserId: string | null) {
+  if (!lobby || !currentUserId) {
+    return null;
+  }
+
+  return lobby.players.find((player) => player.userId === currentUserId) ?? null;
+}
+
+export function selectCurrentPlayerColor(lobby: Lobby | null, currentUserId: string | null): PieceColor | null {
+  return selectCurrentLobbyPlayer(lobby, currentUserId)?.selectedPieceColor ?? null;
+}
+
+export function selectIsColorUsedByAnother(lobby: Lobby | null, currentUserId: string | null, color: PieceColor): boolean {
+  if (!lobby) {
+    return false;
+  }
+
+  return lobby.players.some((player) => player.userId !== currentUserId && player.selectedPieceColor === color);
+}
+
+export function selectAvailablePieceColors(lobby: Lobby | null, currentUserId: string | null): PieceColor[] {
+  return allowedPieceColors.filter((color) => !selectIsColorUsedByAnother(lobby, currentUserId, color));
+}
+
+function hasUniqueSelectedColors(lobby: Lobby): boolean {
+  const colors = lobby.players.flatMap((player) => (player.selectedPieceColor ? [player.selectedPieceColor] : []));
+  return colors.length === lobby.players.length && new Set(colors).size === colors.length;
+}
+
+function toSetupLiveMessage(reason: string): string {
+  switch (reason) {
+    case "CategoriesUpdated":
+      return "Lobby categories updated.";
+    case "PlayerColorSelected":
+      return "Player color updated.";
+    case "PlayerReadyChanged":
+      return "Player readiness updated.";
+    case "PlayerJoined":
+      return "A player joined the lobby.";
+    case "PlayerLeft":
+      return "A player left the lobby.";
+    case "HostTransferred":
+      return "Lobby host changed.";
+    default:
+      return "Lobby setup updated.";
+  }
 }

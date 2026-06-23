@@ -2,7 +2,17 @@ import { describe, expect, it } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../tests/setup";
 import { activeLobbyConflict, lobbyFixture } from "../tests/fixtures/lobbyFixtures";
-import { cancelLobby, createLobby, joinLobby, leaveLobby, normalizeLobbyError, startLobby } from "./lobbyApi";
+import {
+  cancelLobby,
+  createLobby,
+  joinLobby,
+  leaveLobby,
+  normalizeLobbyError,
+  selectLobbyPieceColor,
+  setLobbyReady,
+  startLobby,
+  updateLobbyCategories,
+} from "./lobbyApi";
 import { HttpError } from "./httpClient";
 
 describe("lobbyApi", () => {
@@ -37,6 +47,34 @@ describe("lobbyApi", () => {
       lobby: { status: "Cancelled" },
     });
     await expect(startLobby("lobby-1", { accessToken: "token" })).resolves.toMatchObject({ sessionId: "session-1" });
+  });
+
+  it("calls lobby setup endpoints", async () => {
+    await expect(
+      updateLobbyCategories("lobby-1", ["10000000-0000-0000-0000-000000000001"], { accessToken: "token" }),
+    ).resolves.toMatchObject({ selectedCategoryIds: ["10000000-0000-0000-0000-000000000001"] });
+
+    await expect(selectLobbyPieceColor("lobby-1", "Blue", { accessToken: "token" })).resolves.toMatchObject({
+      players: expect.arrayContaining([expect.objectContaining({ selectedPieceColor: "Blue" })]),
+    });
+
+    await expect(setLobbyReady("lobby-1", true, 1, { accessToken: "token" })).resolves.toMatchObject({
+      players: expect.arrayContaining([expect.objectContaining({ isReady: true })]),
+    });
+  });
+
+  it("sends setupVersion when starting a configured lobby", async () => {
+    let body: unknown;
+    server.use(
+      http.post("**/api/lobbies/:lobbyId/start", async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json(lobbyFixture());
+      }),
+    );
+
+    await startLobby("lobby-1", 7, { accessToken: "token" }).catch(() => undefined);
+
+    expect(body).toEqual({ setupVersion: 7 });
   });
 
   it("normalizes common lobby HTTP errors", () => {

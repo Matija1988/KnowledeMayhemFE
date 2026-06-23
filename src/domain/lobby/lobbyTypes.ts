@@ -1,8 +1,14 @@
 export type LobbyStatus = "Open" | "Started" | "Closed" | "Cancelled";
+export type LobbySetupStatus = "Pending" | "Ready";
+export type PieceColor = "Red" | "Blue" | "Green" | "Yellow" | "Purple" | "Orange";
+
+export const allowedPieceColors: PieceColor[] = ["Red", "Blue", "Green", "Yellow", "Purple", "Orange"];
 
 export type LobbyPlayer = {
   userId: string;
   joinedAtUtc: string;
+  selectedPieceColor: PieceColor | null;
+  isReady: boolean;
 };
 
 export type Lobby = {
@@ -15,6 +21,10 @@ export type Lobby = {
   createdAtUtc: string;
   startedAtUtc: string | null;
   closedAtUtc: string | null;
+  selectedCategoryIds: string[];
+  setupStatus: LobbySetupStatus;
+  setupVersion: number;
+  updatedAtUtc: string | null;
   players: LobbyPlayer[];
 };
 
@@ -22,6 +32,8 @@ export type InitialGameState = {
   lobbyId: string;
   orderedPlayerIds: string[];
   createdAtUtc: string;
+  selectedCategoryIds: string[];
+  playerColors: Record<string, PieceColor>;
 };
 
 export type StartLobbyResult = {
@@ -58,12 +70,16 @@ export type LobbyOperation =
   | "readLobby"
   | "leaveLobby"
   | "cancelLobby"
-  | "startLobby";
+  | "startLobby"
+  | "updateCategories"
+  | "selectPieceColor"
+  | "setReady";
 
 export type LobbyActionError = {
   title: string;
   message: string;
   displayMode: "toast" | "modal";
+  code?: string;
   activeLobby?: Lobby | null;
   activeLobbyId?: string | null;
 };

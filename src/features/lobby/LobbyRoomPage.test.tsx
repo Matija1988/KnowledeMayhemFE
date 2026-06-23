@@ -169,7 +169,9 @@ describe("LobbyRoomPage", () => {
     lobbyHubMocks.createLobbyHubConnection.mockReturnValue(connection);
 
     useAuthStore.getState().login(accessTokenForUser("user-1"));
-    useLobbyStore.getState().setCurrentLobby(lobbyWithGuest({ players: [{ userId: "user-1", joinedAtUtc: "now" }] }));
+    useLobbyStore
+      .getState()
+      .setCurrentLobby(lobbyWithGuest({ players: [{ userId: "user-1", joinedAtUtc: "now", selectedPieceColor: null, isReady: false }] }));
 
     render(
       <MemoryRouter initialEntries={["/lobby/lobby-1"]}>
@@ -180,6 +182,42 @@ describe("LobbyRoomPage", () => {
     );
 
     await waitFor(() => expect(lobbyHubMocks.joinLobbyHubGroup).toHaveBeenCalledWith(connection, "lobby-1"));
+  });
+
+  it("refetches the lobby when a setup realtime payload cannot be mapped safely", async () => {
+    let handlers!: LobbyHubHandlers;
+    let readCount = 0;
+    server.use(
+      http.get("**/api/lobbies/lobby-1", () => {
+        readCount += 1;
+        return HttpResponse.json(lobbyWithGuest({ setupVersion: 7 }));
+      }),
+    );
+    lobbyHubMocks.createLobbyHubConnection.mockReturnValue({
+      start: vi.fn().mockResolvedValue(undefined),
+      stop: vi.fn().mockResolvedValue(undefined),
+      on: vi.fn(),
+    });
+    lobbyHubMocks.registerLobbyHubHandlers.mockImplementation((_, nextHandlers: LobbyHubHandlers) => {
+      handlers = nextHandlers;
+    });
+
+    useAuthStore.getState().login(accessTokenForUser("user-1"));
+    useLobbyStore.getState().setCurrentLobby(lobbyWithGuest());
+
+    render(
+      <MemoryRouter initialEntries={["/lobby/lobby-1"]}>
+        <Routes>
+          <Route path="/lobby/:lobbyId" element={<LobbyRoomPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(lobbyHubMocks.registerLobbyHubHandlers).toHaveBeenCalled());
+    handlers.onSetupChangedMalformed?.();
+
+    await waitFor(() => expect(readCount).toBe(1));
+    expect(useLobbyStore.getState().currentLobby?.setupVersion).toBe(7);
   });
 
   it("does not repeatedly refetch the lobby after a failed route read", async () => {

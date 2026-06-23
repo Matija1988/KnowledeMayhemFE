@@ -27,4 +27,18 @@ describe("GamePlayerPanel", () => {
     expect(screen.getByText("user-1")).toBeInTheDocument();
     expect(screen.getByText("Eliminated")).toBeInTheDocument();
   });
+
+  it("shows configured player piece colors with text and swatches", () => {
+    const session = gameSessionFixture({
+      players: [
+        { ...gameSessionFixture().players[0], pieceColor: "Red" },
+        { ...gameSessionFixture().players[1], pieceColor: "Blue" },
+      ],
+    });
+
+    render(<GamePlayerPanel session={session} currentUserId="user-1" />);
+
+    expect(screen.getByText("Red")).toBeInTheDocument();
+    expect(screen.getByText("Blue")).toBeInTheDocument();
+  });
 });

@@ -12,11 +12,12 @@ import type {
 const gameSessionStatuses = new Set<GameSessionStatus>(["InProgress", "Completed", "Cancelled"]);
 const tileTypes = new Set<TileType>(["Normal", "Blocked", "Special"]);
 
-export type GamePlayerDto = Omit<GamePlayer, "id" | "gameSessionId" | "createdAtUtc"> & {
+export type GamePlayerDto = Omit<GamePlayer, "id" | "gameSessionId" | "createdAtUtc" | "pieceColor"> & {
   id?: string;
   playerId?: string;
   gameSessionId?: string;
   createdAtUtc?: string;
+  pieceColor?: string | null;
 };
 export type BoardTileDto = Omit<BoardTile, "id" | "gameSessionId" | "createdAtUtc"> & {
   id?: string;
@@ -35,10 +36,11 @@ export type TurnStateDto = Omit<TurnState, "gameSessionId"> & {
   gameSessionId?: string;
   sessionId?: string;
 };
-export type GameSessionDto = Omit<GameSession, "id" | "players" | "tiles" | "pieces" | "createdAtUtc"> & {
+export type GameSessionDto = Omit<GameSession, "id" | "players" | "tiles" | "pieces" | "createdAtUtc" | "selectedCategoryIds"> & {
   id?: string;
   sessionId?: string;
   createdAtUtc?: string;
+  selectedCategoryIds?: string[] | null;
   players: GamePlayerDto[];
   tiles: BoardTileDto[];
   pieces: PieceDto[];
@@ -76,6 +78,7 @@ export function mapGameSession(dto: GameSessionDto): GameSession {
     startedAtUtc: dto.startedAtUtc,
     endedAtUtc: dto.endedAtUtc ?? null,
     winnerPlayerId: dto.winnerPlayerId ?? null,
+    selectedCategoryIds: [...(dto.selectedCategoryIds ?? [])],
     createdAtUtc: dto.createdAtUtc ?? dto.startedAtUtc,
     players,
     tiles,
@@ -98,6 +101,7 @@ export function mapGamePlayer(dto: GamePlayerDto, fallbackGameSessionId?: string
     userId: dto.userId,
     playerOrder: dto.playerOrder,
     displayName: dto.displayName ?? null,
+    pieceColor: dto.pieceColor ?? null,
     isEliminated: Boolean(dto.isEliminated),
     eliminatedAtUtc: dto.eliminatedAtUtc ?? null,
     eliminationReason: dto.eliminationReason ?? null,

@@ -10,6 +10,20 @@ describe("gameMappers", () => {
     expect(session.players[0]?.displayName).toBe("Alice");
   });
 
+  it("maps lobby setup selections into game session state", () => {
+    const dto = gameSessionFixture({
+      selectedCategoryIds: ["category-1", "category-2"],
+      players: gameSessionFixture().players.map((player) =>
+        player.id === "player-1" ? { ...player, pieceColor: "Red" } : { ...player, pieceColor: "Blue" },
+      ),
+    });
+
+    const session = mapGameSession(dto);
+
+    expect(session.selectedCategoryIds).toEqual(["category-1", "category-2"]);
+    expect(session.players.map((player) => player.pieceColor)).toEqual(["Red", "Blue"]);
+  });
+
   it("maps backend game session DTO identifiers into frontend domain identifiers", () => {
     const backendDto: GameSessionDto = {
       sessionId: "session-backend",

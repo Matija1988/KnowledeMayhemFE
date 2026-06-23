@@ -13,10 +13,16 @@ export function LobbyPlayerList({ lobby, currentUserId }: LobbyPlayerListProps) 
       <ul className="player-list">
         {lobby.players.map((player) => (
           <li key={player.userId}>
-            <span>{player.userId}</span>
+            <span className="player-identity">
+              <span>{player.userId}</span>
+              <span className="player-setup-summary">
+                {player.selectedPieceColor ?? "No color"} - {player.isReady ? "Ready" : "Not ready"}
+              </span>
+            </span>
             <span className="player-badges">
               {player.userId === lobby.hostUserId ? <Badge>Host</Badge> : null}
               {player.userId === currentUserId ? <Badge tone="success">You</Badge> : null}
+              {player.isReady ? <Badge tone="success">Ready</Badge> : <Badge tone="warning">Pending</Badge>}
             </span>
           </li>
         ))}

@@ -9,7 +9,9 @@ import { useErrorStore } from "../../stores/errorStore";
 import { useLobbyStore } from "../../stores/lobbyStore";
 import { createLobbyHubConnection, joinLobbyHubGroup, registerLobbyHubHandlers } from "../../realtime/lobbyHub";
 import { LobbyActions } from "./LobbyActions";
+import { LobbyCategorySelector } from "./LobbyCategorySelector";
 import { LobbyCodePanel } from "./LobbyCodePanel";
+import { LobbyColorPicker } from "./LobbyColorPicker";
 import { LobbyPlayerList } from "./LobbyPlayerList";
 import { useLobbyActions } from "./useLobbyActions";
 import { LogoutButton } from "../auth/LogoutButton";
@@ -25,9 +27,11 @@ export function LobbyRoomPage() {
   const pendingOperation = useLobbyStore((state) => state.pendingOperation);
   const requestedLobbyIdRef = useRef<string | null>(null);
   const { read } = useLobbyActions();
+  const readRef = useRef(read);
   const showError = useErrorStore((state) => state.showError);
   const setConnection = useLobbyStore((state) => state.setConnection);
   const applyLobbySnapshot = useLobbyStore((state) => state.applyLobbySnapshot);
+  const applySetupChanged = useLobbyStore((state) => state.applySetupChanged);
   const applyPlayerJoined = useLobbyStore((state) => state.applyPlayerJoined);
   const applyPlayerJoinedPatch = useLobbyStore((state) => state.applyPlayerJoinedPatch);
   const applyPlayerLeft = useLobbyStore((state) => state.applyPlayerLeft);
@@ -36,6 +40,10 @@ export function LobbyRoomPage() {
   const applyLobbyStarted = useLobbyStore((state) => state.applyLobbyStarted);
   const applyLobbyClosed = useLobbyStore((state) => state.applyLobbyClosed);
   const applyLobbyCancelled = useLobbyStore((state) => state.applyLobbyCancelled);
+
+  useEffect(() => {
+    readRef.current = read;
+  }, [read]);
 
   useEffect(() => {
     if (lobby?.id === lobbyId) {
@@ -75,6 +83,16 @@ export function LobbyRoomPage() {
       onSnapshot: (nextLobby) => {
         if (isActive) {
           applyLobbySnapshot(nextLobby);
+        }
+      },
+      onSetupChanged: (nextLobby, reason) => {
+        if (isActive) {
+          applySetupChanged(nextLobby, reason);
+        }
+      },
+      onSetupChangedMalformed: () => {
+        if (isActive) {
+          void readRef.current(lobbyId);
         }
       },
       onPlayerJoined: (nextLobby) => {
@@ -126,10 +144,18 @@ export function LobbyRoomPage() {
       },
       onConnectionStatus: (status) => {
         if (isActive) {
-          setConnection({ status });
           if (status === "connected") {
-            void joinLobbyUpdates();
+            setConnection({ status: "connecting" });
+            void joinLobbyUpdates()
+              .then(() => readRef.current(lobbyId))
+              .finally(() => {
+                if (isActive) {
+                  setConnection({ status: "connected" });
+                }
+              });
+            return;
           }
+          setConnection({ status });
         }
       },
     });
@@ -164,6 +190,7 @@ export function LobbyRoomPage() {
     applyLobbyCancelled,
     applyLobbyClosed,
     applyLobbySnapshot,
+    applySetupChanged,
     applyLobbyStarted,
     applyPlayerJoined,
     applyPlayerJoinedPatch,
@@ -184,6 +211,7 @@ export function LobbyRoomPage() {
   }
 
   const expired = isLobbyExpired(lobby);
+  const setupControlsDisabled = connection.status === "connecting" || connection.status === "reconnecting";
 
   return (
     <main className="lobby-page">
@@ -217,7 +245,11 @@ export function LobbyRoomPage() {
         </Card>
         <Card>
           <LobbyPlayerList lobby={lobby} currentUserId={currentUserId} />
-          <LobbyActions lobby={lobby} currentUserId={currentUserId} />
+          <LobbyActions lobby={lobby} currentUserId={currentUserId} pendingOperation={pendingOperation} controlsDisabled={setupControlsDisabled} />
+        </Card>
+        <Card>
+          <LobbyCategorySelector lobby={lobby} currentUserId={currentUserId} controlsDisabled={setupControlsDisabled} />
+          <LobbyColorPicker lobby={lobby} currentUserId={currentUserId} controlsDisabled={setupControlsDisabled} />
         </Card>
       </div>
       <p className="sr-status" aria-live="polite">

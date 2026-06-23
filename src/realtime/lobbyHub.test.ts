@@ -11,6 +11,7 @@ describe("lobbyHub", () => {
     const callbacks = new Map<string, (...args: unknown[]) => void>();
     const handlers: LobbyHubHandlers = {
       onSnapshot: vi.fn(),
+      onSetupChanged: vi.fn(),
       onPlayerJoined: vi.fn(),
       onPlayerJoinedPatch: vi.fn(),
       onPlayerLeft: vi.fn(),
@@ -24,6 +25,7 @@ describe("lobbyHub", () => {
 
     registerLobbyHubHandlers({ on: (event, callback) => callbacks.set(event, callback) }, handlers);
     callbacks.get("LobbySnapshot")?.(lobbyFixture());
+    callbacks.get("LobbySetupChanged")?.({ lobby: lobbyFixture({ setupVersion: 2 }), reason: "PlayerReadyChanged" });
     callbacks.get("LobbyPlayerJoinedEvent")?.({
       lobbyId: "lobby-1",
       player: { userId: "user-2", joinedAtUtc: "now" },
@@ -32,9 +34,34 @@ describe("lobbyHub", () => {
     callbacks.get("LobbyStartedEvent")?.({ lobbyId: "lobby-1", sessionId: "session-1" });
 
     expect(handlers.onSnapshot).toHaveBeenCalledWith(expect.objectContaining({ id: "lobby-1" }));
+    expect(handlers.onSetupChanged).toHaveBeenCalledWith(expect.objectContaining({ setupVersion: 2 }), "PlayerReadyChanged");
     expect(handlers.onPlayerJoinedPatch).toHaveBeenCalledWith("lobby-1", "user-2", "now");
     expect(handlers.onHostChanged).toHaveBeenCalledWith("user-2");
     expect(handlers.onStarted).toHaveBeenCalledWith(expect.objectContaining({ sessionId: "session-1" }));
+  });
+
+  it("routes malformed setup changed payloads to the fallback handler", () => {
+    const callbacks = new Map<string, (...args: unknown[]) => void>();
+    const handlers: LobbyHubHandlers = {
+      onSnapshot: vi.fn(),
+      onSetupChanged: vi.fn(),
+      onSetupChangedMalformed: vi.fn(),
+      onPlayerJoined: vi.fn(),
+      onPlayerJoinedPatch: vi.fn(),
+      onPlayerLeft: vi.fn(),
+      onPlayerLeftPatch: vi.fn(),
+      onHostChanged: vi.fn(),
+      onStarted: vi.fn(),
+      onClosed: vi.fn(),
+      onCancelled: vi.fn(),
+      onConnectionStatus: vi.fn(),
+    };
+
+    registerLobbyHubHandlers({ on: (event, callback) => callbacks.set(event, callback) }, handlers);
+    callbacks.get("LobbySetupChanged")?.({ lobby: { id: null }, reason: "CategoriesUpdated" });
+
+    expect(handlers.onSetupChanged).not.toHaveBeenCalled();
+    expect(handlers.onSetupChangedMalformed).toHaveBeenCalledOnce();
   });
 
   it("joins a lobby update group", async () => {

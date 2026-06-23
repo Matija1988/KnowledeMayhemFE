@@ -7,13 +7,17 @@ import {
   joinLobby,
   leaveLobby,
   normalizeLobbyError,
+  selectLobbyPieceColor,
   startLobby,
+  setLobbyReady,
+  updateLobbyCategories,
 } from "../../api/lobbyApi";
 import { normalizeJoinCode } from "../../domain/lobby/lobbyMappers";
 import { useAuthStore } from "../../stores/authStore";
 import { useErrorStore } from "../../stores/errorStore";
 import { useLoadingStore } from "../../stores/loadingStore";
 import { useLobbyStore } from "../../stores/lobbyStore";
+import type { PieceColor } from "../../domain/lobby/lobbyTypes";
 
 export function useLobbyActions() {
   const navigate = useNavigate();
@@ -23,6 +27,7 @@ export function useLobbyActions() {
   const hideLoading = useLoadingStore((state) => state.hideLoading);
   const isLoading = useLoadingStore((state) => state.isLoading);
   const setCurrentLobby = useLobbyStore((state) => state.setCurrentLobby);
+  const currentLobby = useLobbyStore((state) => state.currentLobby);
   const clearLobby = useLobbyStore((state) => state.clearLobby);
   const beginOperation = useLobbyStore((state) => state.beginOperation);
   const endOperation = useLobbyStore((state) => state.endOperation);
@@ -80,9 +85,27 @@ export function useLobbyActions() {
 
   async function start(lobbyId: string): Promise<boolean> {
     return runLobbyAction("startLobby", async () => {
-      const result = await startLobby(lobbyId, requireToken(accessToken));
+      const result = await startLobby(lobbyId, currentLobby?.setupVersion ?? 0, requireToken(accessToken));
       applyLobbyStarted(result);
       navigate(`/game/${result.sessionId}`);
+    });
+  }
+
+  async function updateCategories(lobbyId: string, categoryIds: string[]): Promise<boolean> {
+    return runLobbyAction("updateCategories", async () => {
+      setCurrentLobby(await updateLobbyCategories(lobbyId, categoryIds, requireToken(accessToken)));
+    });
+  }
+
+  async function selectColor(lobbyId: string, pieceColor: PieceColor): Promise<boolean> {
+    return runLobbyAction("selectPieceColor", async () => {
+      setCurrentLobby(await selectLobbyPieceColor(lobbyId, pieceColor, requireToken(accessToken)));
+    });
+  }
+
+  async function setReady(lobbyId: string, isReady: boolean, setupVersion: number): Promise<boolean> {
+    return runLobbyAction("setReady", async () => {
+      setCurrentLobby(await setLobbyReady(lobbyId, isReady, setupVersion, requireToken(accessToken)));
     });
   }
 
@@ -107,6 +130,15 @@ export function useLobbyActions() {
         navigate(`/lobby/${normalized.activeLobbyId}`);
         return true;
       }
+      if (normalized.code === "matchmaking.setup.stale-version" && currentLobby) {
+        setCurrentLobby(await getLobby(currentLobby.id, requireToken(accessToken)));
+        showError({
+          title: "Lobby setup changed",
+          message: "Lobby setup was updated. Review the latest setup and try again.",
+          displayMode: "toast",
+        });
+        return false;
+      }
       showError(normalized);
       return false;
     } finally {
@@ -115,7 +147,7 @@ export function useLobbyActions() {
     }
   }
 
-  return { create, join, read, leave, cancel, start, joinCodeError };
+  return { create, join, read, leave, cancel, start, updateCategories, selectColor, setReady, joinCodeError };
 }
 
 function requireToken(accessToken: string | null): { accessToken: string } {

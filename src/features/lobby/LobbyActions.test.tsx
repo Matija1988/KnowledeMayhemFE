@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { lobbyFixture, lobbyWithGuest } from "../../tests/fixtures/lobbyFixtures";
+import { configuredLobbyFixture } from "../../tests/fixtures/lobbySetupFixtures";
 import { LobbyActions } from "./LobbyActions";
 
 describe("LobbyActions", () => {
@@ -21,7 +22,7 @@ describe("LobbyActions", () => {
   });
 
   it("enables start for hosts when two players are present", () => {
-    render(<LobbyActions lobby={lobbyWithGuest()} currentUserId="user-1" />, { wrapper: MemoryRouter });
+    render(<LobbyActions lobby={configuredLobbyFixture()} currentUserId="user-1" />, { wrapper: MemoryRouter });
 
     expect(screen.getByRole("button", { name: "Start lobby" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Cancel lobby" })).toBeInTheDocument();
