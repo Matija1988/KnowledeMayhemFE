@@ -7,6 +7,7 @@ import type {
 
 const host: LobbyPlayer = {
   userId: "user-1",
+  username: "Alice",
   joinedAtUtc: "2026-06-16T10:00:00.000Z",
   selectedPieceColor: null,
   isReady: false,
@@ -34,7 +35,10 @@ export function lobbyFixture(overrides: Partial<Lobby> = {}): Lobby {
 
 export function lobbyWithGuest(overrides: Partial<Lobby> = {}): Lobby {
   return lobbyFixture({
-    players: [host, { userId: "user-2", joinedAtUtc: "2026-06-16T10:01:00.000Z", selectedPieceColor: null, isReady: false }],
+    players: [
+      host,
+      { userId: "user-2", username: "Bob", joinedAtUtc: "2026-06-16T10:01:00.000Z", selectedPieceColor: null, isReady: false },
+    ],
     ...overrides,
   });
 }

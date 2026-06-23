@@ -14,7 +14,7 @@ export function LobbyPlayerList({ lobby, currentUserId }: LobbyPlayerListProps) 
         {lobby.players.map((player) => (
           <li key={player.userId}>
             <span className="player-identity">
-              <span>{player.userId}</span>
+              <span>{player.username ?? player.userId}</span>
               <span className="player-setup-summary">
                 {player.selectedPieceColor ?? "No color"} - {player.isReady ? "Ready" : "Not ready"}
               </span>

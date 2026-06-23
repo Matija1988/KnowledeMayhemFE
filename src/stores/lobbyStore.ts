@@ -61,7 +61,7 @@ export const useLobbyStore = create<LobbyStore>((set) => ({
           ? state.currentLobby
           : {
               ...state.currentLobby,
-              players: [...state.currentLobby.players, { userId, joinedAtUtc, selectedPieceColor: null, isReady: false }],
+              players: [...state.currentLobby.players, { userId, username: null, joinedAtUtc, selectedPieceColor: null, isReady: false }],
             },
         liveMessage: `${userId} joined the lobby.`,
       };

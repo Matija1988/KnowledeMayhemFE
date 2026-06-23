@@ -10,7 +10,15 @@ describe("lobbyMappers", () => {
         setupStatus: "Ready",
         setupVersion: 3,
         updatedAtUtc: "2026-06-16T10:02:00.000Z",
-        players: [{ userId: "user-1", joinedAtUtc: "2026-06-16T10:00:00.000Z", selectedPieceColor: "Red", isReady: true }],
+        players: [
+          {
+            userId: "user-1",
+            username: " Alice ",
+            joinedAtUtc: "2026-06-16T10:00:00.000Z",
+            selectedPieceColor: "Red",
+            isReady: true,
+          },
+        ],
       }),
     );
 
@@ -21,7 +29,7 @@ describe("lobbyMappers", () => {
       setupVersion: 3,
       updatedAtUtc: "2026-06-16T10:02:00.000Z",
     });
-    expect(lobby.players[0]).toMatchObject({ selectedPieceColor: "Red", isReady: true });
+    expect(lobby.players[0]).toMatchObject({ username: "Alice", selectedPieceColor: "Red", isReady: true });
   });
 
   it("rejects unsupported statuses and player limits", () => {
@@ -32,7 +40,9 @@ describe("lobbyMappers", () => {
 
   it("maps start handoff data", () => {
     const lobby = lobbyFixture({
-      players: [{ userId: "user-1", joinedAtUtc: "2026-06-16T10:00:00.000Z", selectedPieceColor: null, isReady: false }],
+      players: [
+        { userId: "user-1", username: "Alice", joinedAtUtc: "2026-06-16T10:00:00.000Z", selectedPieceColor: null, isReady: false },
+      ],
     });
 
     expect(

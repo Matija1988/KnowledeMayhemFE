@@ -6,6 +6,7 @@ export const allowedPieceColors: PieceColor[] = ["Red", "Blue", "Green", "Yellow
 
 export type LobbyPlayer = {
   userId: string;
+  username: string | null;
   joinedAtUtc: string;
   selectedPieceColor: PieceColor | null;
   isReady: boolean;

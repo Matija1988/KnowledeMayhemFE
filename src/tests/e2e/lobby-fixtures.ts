@@ -16,6 +16,7 @@ function toBase64Url(value: string): string {
 
 export type LobbySetupPlayerDto = {
   userId: string;
+  username: string | null;
   joinedAtUtc: string;
   selectedPieceColor: string | null;
   isReady: boolean;
@@ -52,12 +53,15 @@ export const openLobby: LobbySetupLobbyDto = {
   setupStatus: "Pending",
   setupVersion: 0,
   updatedAtUtc: null,
-  players: [{ userId: "user-1", joinedAtUtc: "2026-06-16T10:00:00.000Z", selectedPieceColor: null, isReady: false }],
+  players: [{ userId: "user-1", username: "Alice", joinedAtUtc: "2026-06-16T10:00:00.000Z", selectedPieceColor: null, isReady: false }],
 };
 
 export const lobbyWithGuest = {
   ...openLobby,
-  players: [...openLobby.players, { userId: "user-2", joinedAtUtc: "2026-06-16T10:01:00.000Z", selectedPieceColor: null, isReady: false }],
+  players: [
+    ...openLobby.players,
+    { userId: "user-2", username: "Bob", joinedAtUtc: "2026-06-16T10:01:00.000Z", selectedPieceColor: null, isReady: false },
+  ],
 } satisfies LobbySetupLobbyDto;
 
 export const setupCategories = [

@@ -49,8 +49,14 @@ export const lobbyHandlers = [
       lobbyWithGuest({
         id: String(params.lobbyId),
         players: [
-          { userId: "user-1", joinedAtUtc: "2026-06-16T10:00:00.000Z", selectedPieceColor: body.pieceColor as never, isReady: false },
-          { userId: "user-2", joinedAtUtc: "2026-06-16T10:01:00.000Z", selectedPieceColor: null, isReady: false },
+          {
+            userId: "user-1",
+            username: "Alice",
+            joinedAtUtc: "2026-06-16T10:00:00.000Z",
+            selectedPieceColor: body.pieceColor as never,
+            isReady: false,
+          },
+          { userId: "user-2", username: "Bob", joinedAtUtc: "2026-06-16T10:01:00.000Z", selectedPieceColor: null, isReady: false },
         ],
         setupVersion: 1,
       }),
@@ -65,8 +71,14 @@ export const lobbyHandlers = [
       lobbyWithGuest({
         id: String(params.lobbyId),
         players: [
-          { userId: "user-1", joinedAtUtc: "2026-06-16T10:00:00.000Z", selectedPieceColor: "Blue", isReady: Boolean(body.isReady) },
-          { userId: "user-2", joinedAtUtc: "2026-06-16T10:01:00.000Z", selectedPieceColor: null, isReady: false },
+          {
+            userId: "user-1",
+            username: "Alice",
+            joinedAtUtc: "2026-06-16T10:00:00.000Z",
+            selectedPieceColor: "Blue",
+            isReady: Boolean(body.isReady),
+          },
+          { userId: "user-2", username: "Bob", joinedAtUtc: "2026-06-16T10:01:00.000Z", selectedPieceColor: null, isReady: false },
         ],
         setupVersion: (body.setupVersion ?? 0) + 1,
       }),

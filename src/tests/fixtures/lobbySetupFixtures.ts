@@ -10,12 +10,14 @@ export function configuredLobbyFixture(overrides: Partial<Lobby> = {}): Lobby {
     players: [
       {
         userId: "user-1",
+        username: "Alice",
         joinedAtUtc: "2026-06-16T10:00:00.000Z",
         selectedPieceColor: "Red",
         isReady: true,
       },
       {
         userId: "user-2",
+        username: "Bob",
         joinedAtUtc: "2026-06-16T10:01:00.000Z",
         selectedPieceColor: "Blue",
         isReady: true,

@@ -17,6 +17,7 @@ const pieceColors = new Set<PieceColor>(allowedPieceColors);
 
 export type LobbyPlayerDto = {
   userId: string;
+  username?: string | null;
   joinedAtUtc: string;
   selectedPieceColor?: string | null;
   isReady?: boolean;
@@ -89,6 +90,7 @@ export function mapLobbyPlayer(dto: LobbyPlayerDto): LobbyPlayer {
 
   return {
     userId: dto.userId,
+    username: normalizeUsername(dto.username),
     joinedAtUtc: dto.joinedAtUtc,
     selectedPieceColor: mapPieceColor(dto.selectedPieceColor),
     isReady: Boolean(dto.isReady),
@@ -149,6 +151,10 @@ function mapPieceColor(value: unknown): PieceColor | null {
     throw new Error(`Unsupported piece color: ${String(value)}`);
   }
   return value as PieceColor;
+}
+
+function normalizeUsername(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
 function mapPlayerColors(value: Record<string, string>): Record<string, PieceColor> {

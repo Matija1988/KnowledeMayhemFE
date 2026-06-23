@@ -54,6 +54,8 @@ describe("LobbyRoomPage", () => {
 
     expect(screen.getByText("ABC123")).toBeInTheDocument();
     expect(screen.getByText("2/4")).toBeInTheDocument();
+    expect(screen.getByText("Alice")).toBeInTheDocument();
+    expect(screen.getByText("Bob")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Copy lobby code" }));
     expect(await screen.findByText("Lobby code copied.")).toBeInTheDocument();
   });
@@ -171,7 +173,9 @@ describe("LobbyRoomPage", () => {
     useAuthStore.getState().login(accessTokenForUser("user-1"));
     useLobbyStore
       .getState()
-      .setCurrentLobby(lobbyWithGuest({ players: [{ userId: "user-1", joinedAtUtc: "now", selectedPieceColor: null, isReady: false }] }));
+      .setCurrentLobby(
+        lobbyWithGuest({ players: [{ userId: "user-1", username: "Alice", joinedAtUtc: "now", selectedPieceColor: null, isReady: false }] }),
+      );
 
     render(
       <MemoryRouter initialEntries={["/lobby/lobby-1"]}>
