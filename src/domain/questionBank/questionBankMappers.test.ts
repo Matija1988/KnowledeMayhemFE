@@ -11,10 +11,11 @@ import {
 
 describe("questionBankMappers", () => {
   it("maps categories and trims write payloads", () => {
-    expect(mapCategories([categoryFixture])[0]).toMatchObject({ name: "C#", isActive: true });
-    expect(toCategoryWriteDto({ name: "  C#  ", description: "  Language  " })).toEqual({
+    expect(mapCategories([categoryFixture])[0]).toMatchObject({ name: "C#", color: "#7C3AED", isActive: true });
+    expect(toCategoryWriteDto({ name: "  C#  ", description: "  Language  ", color: "#7c3aed" })).toEqual({
       name: "C#",
       description: "Language",
+      color: "#7C3AED",
     });
   });
 
@@ -34,6 +35,7 @@ describe("questionBankMappers", () => {
 
   it("rejects malformed payloads", () => {
     expect(() => mapCategories({})).toThrow(/array/i);
+    expect(() => mapCategories([{ ...categoryFixture, color: "violet" }])).toThrow(/color/i);
     expect(() => mapManagementQuestion({ ...managementQuestionFixture, answers: null })).toThrow(/answers/i);
   });
 });

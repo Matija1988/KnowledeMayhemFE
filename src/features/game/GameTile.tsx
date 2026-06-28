@@ -1,10 +1,11 @@
 import { memo } from "react";
 import type { BoardTile, GamePlayer, Piece } from "../../domain/game/gameTypes";
 import { GamePiece } from "./GamePiece";
-import { SpecialFieldBadge } from "../battle/SpecialFieldBadge";
 
 type GameTileProps = {
   tile: BoardTile;
+  categoryName?: string | null;
+  categoryColor?: string;
   piece: Piece | null;
   player: GamePlayer | null;
   pieceOwner: GamePlayer | null;
@@ -17,6 +18,8 @@ type GameTileProps = {
 
 function GameTileComponent({
   tile,
+  categoryName = null,
+  categoryColor = "#64748B",
   piece,
   player,
   pieceOwner,
@@ -29,6 +32,7 @@ function GameTileComponent({
   const label = [
     `Row ${tile.y + 1} column ${tile.x + 1}`,
     tile.tileType === "Blocked" ? "blocked" : tile.tileType === "Special" ? "special field" : "normal",
+    categoryName ? `category ${categoryName}` : null,
     player ? `owned by ${player.displayName ?? player.userId}` : "unowned",
     piece ? "occupied" : "empty",
     isSelected ? "selected" : null,
@@ -56,10 +60,15 @@ function GameTileComponent({
       <span className="game-tile__coordinate">
         {tile.x},{tile.y}
       </span>
-      {tile.categoryId ? <span className="game-tile__category">{tile.categoryId}</span> : null}
+      {tile.categoryId ? (
+        <span
+          className="game-category-dot game-tile__category-dot"
+          style={{ backgroundColor: categoryColor }}
+          title={categoryName ?? "Unknown category"}
+          aria-label={`Category: ${categoryName ?? "Unknown category"}`}
+        />
+      ) : null}
       {tile.tileType === "Blocked" ? <span className="game-tile__state">Blocked</span> : null}
-      <SpecialFieldBadge tile={tile} />
-      {isSelected ? <span className="game-tile__state">Selected</span> : null}
       {isValidTarget ? <span className="game-tile__state">Valid target</span> : null}
       {piece ? <GamePiece piece={piece} owner={pieceOwner} isCurrentUserPiece={isCurrentUserPiece} /> : null}
     </div>

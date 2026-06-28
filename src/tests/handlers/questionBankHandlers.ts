@@ -10,15 +10,15 @@ import {
 export const questionBankHandlers = [
   http.get("**/api/question-bank/categories", () => HttpResponse.json([categoryFixture, inactiveCategoryFixture])),
   http.post("**/api/question-bank/categories", async ({ request }) => {
-    const body = (await request.json()) as { name?: string; description?: string };
+    const body = (await request.json()) as { name?: string; description?: string; color?: string };
     if (body.name === "Conflict") {
       return HttpResponse.json(conflictProblem, { status: 409 });
     }
-    return HttpResponse.json({ ...categoryFixture, name: body.name, description: body.description }, { status: 201 });
+    return HttpResponse.json({ ...categoryFixture, name: body.name, description: body.description, color: body.color }, { status: 201 });
   }),
   http.put("**/api/question-bank/categories/:categoryId", async ({ request }) => {
-    const body = (await request.json()) as { name?: string; description?: string };
-    return HttpResponse.json({ ...categoryFixture, name: body.name, description: body.description });
+    const body = (await request.json()) as { name?: string; description?: string; color?: string };
+    return HttpResponse.json({ ...categoryFixture, name: body.name, description: body.description, color: body.color });
   }),
   http.delete("**/api/question-bank/categories/:categoryId", () => new HttpResponse(null, { status: 200 })),
   http.get("**/api/question-bank/management/questions", () => HttpResponse.json(questionPageFixture)),

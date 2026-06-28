@@ -14,7 +14,7 @@ describe("GamePlayerPanel", () => {
     expect(players[1]).toHaveTextContent("Bob");
   });
 
-  it("falls back to stable identifiers and shows eliminated state", () => {
+  it("falls back to the player number without exposing identifiers and shows eliminated state", () => {
     const session = gameSessionFixture({
       players: [
         { ...gameSessionFixture().players[0], displayName: null },
@@ -24,7 +24,8 @@ describe("GamePlayerPanel", () => {
 
     render(<GamePlayerPanel session={session} currentUserId="user-2" />);
 
-    expect(screen.getByText("user-1")).toBeInTheDocument();
+    expect(screen.getByText("Player 1")).toBeInTheDocument();
+    expect(screen.queryByText("user-1")).not.toBeInTheDocument();
     expect(screen.getByText("Eliminated")).toBeInTheDocument();
   });
 

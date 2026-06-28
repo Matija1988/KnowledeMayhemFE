@@ -4,6 +4,7 @@ export type CategoryDto = {
   id?: unknown;
   name?: unknown;
   description?: unknown;
+  color?: unknown;
   createdAt?: unknown;
   updatedAt?: unknown;
   isActive?: unknown;
@@ -50,6 +51,7 @@ export function mapCategory(dto: CategoryDto): Category {
     id: requiredString(dto.id, "Category id"),
     name: requiredString(dto.name, "Category name"),
     description: requiredString(dto.description, "Category description"),
+    color: requiredHexColor(dto.color),
     createdAtUtc: requiredString(dto.createdAt, "Category createdAt"),
     updatedAtUtc: optionalString(dto.updatedAt),
     isActive: requiredBoolean(dto.isActive, "Category isActive"),
@@ -86,10 +88,11 @@ export function mapPagedQuestions(dto: PagedQuestionDto): PaginatedResult<Questi
   };
 }
 
-export function toCategoryWriteDto(value: { name: string; description: string }) {
+export function toCategoryWriteDto(value: { name: string; description: string; color: string }) {
   return {
     name: value.name.trim(),
     description: value.description.trim(),
+    color: value.color.trim().toUpperCase(),
   };
 }
 
@@ -165,4 +168,12 @@ function requiredNumber(value: unknown, label: string): number {
   }
 
   return value;
+}
+
+function requiredHexColor(value: unknown): string {
+  const color = requiredString(value, "Category color").toUpperCase();
+  if (!/^#[0-9A-F]{6}$/.test(color)) {
+    throw new Error("Category color was invalid.");
+  }
+  return color;
 }

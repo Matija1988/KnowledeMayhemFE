@@ -22,6 +22,9 @@ describe("GameSessionPage", () => {
     expect(screen.getByText(/loading game/i)).toBeInTheDocument();
     await waitFor(() => expect(screen.getAllByText(/turn 1/i).length).toBeGreaterThan(0));
     expect(screen.getByRole("grid", { name: /game board/i })).toBeInTheDocument();
+    const playersPanel = screen.getByRole("heading", { name: "Players" }).closest("aside");
+    const categoriesPanel = screen.getByRole("heading", { name: "Categories" }).closest("aside");
+    expect(playersPanel?.nextElementSibling).toBe(categoriesPanel);
   });
 
   it("shows a blocking error for malformed snapshots", async () => {

@@ -463,7 +463,7 @@ export function selectBoardCells(session: GameSession | null): BoardTile[] {
 }
 
 export function selectPlayerDisplayName(player: GameSession["players"][number]): string {
-  return player.displayName?.trim() || player.userId || player.id;
+  return player.displayName?.trim() || `Player ${player.playerOrder}`;
 }
 
 export function selectSelectablePieces(session: GameSession | null, currentUserId: string | null): Piece[] {

@@ -4,7 +4,7 @@ import { Card } from "../../components/ui/Card";
 import { Modal } from "../../components/ui/Modal";
 import { Badge } from "../../components/ui/Badge";
 import { getUserRoleFromJwt, canManageCategories } from "../../domain/auth";
-import type { Category } from "../../domain/questionBank/questionBankTypes";
+import type { Category, CategoryFormValue } from "../../domain/questionBank/questionBankTypes";
 import { useAuthStore } from "../../stores/authStore";
 import { useQuestionBankStore } from "../../stores/questionBankStore";
 import { CategoryForm } from "./CategoryForm";
@@ -31,7 +31,7 @@ export function CategoryListPage() {
   );
   const isSaving = pending.includes("createCategory") || pending.includes("updateCategory");
 
-  async function saveCategory(value: { name: string; description: string }) {
+  async function saveCategory(value: CategoryFormValue) {
     const saved = await actions.saveCategory(value, editing?.id);
     if (saved) {
       setEditing(null);
@@ -81,8 +81,12 @@ export function CategoryListPage() {
           <Card key={category.id}>
             <div className="question-bank-row">
               <div>
-                <h3>{category.name}</h3>
+                <h3 className="question-bank-category-name">
+                  <span className="category-color-swatch" style={{ backgroundColor: category.color }} aria-hidden="true" />
+                  {category.name}
+                </h3>
                 <p>{category.description}</p>
+                <code>{category.color}</code>
               </div>
               <Badge tone={category.isActive ? "success" : "warning"}>{category.isActive ? "Active" : "Inactive"}</Badge>
             </div>

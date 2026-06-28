@@ -5,6 +5,30 @@ import { conquestResultFixture, gameplayQuestionFixture } from "../../tests/fixt
 import { QuestionModal } from "./QuestionModal";
 
 describe("QuestionModal", () => {
+  it("shows the countdown supplied for a normal-field question", () => {
+    const now = new Date("2026-06-28T12:00:00.000Z").getTime();
+    const dateNow = vi.spyOn(Date, "now").mockReturnValue(now);
+
+    render(
+      <QuestionModal
+        question={gameplayQuestionFixture({ expiresAtUtc: new Date(now + 30_000).toISOString() })}
+        result={null}
+        selectedAnswerId={null}
+        pendingAnswer={false}
+        expiredPending={false}
+        blockingError={null}
+        actingPlayerId="player-1"
+        liveMessage=""
+        onSelectAnswer={vi.fn()}
+        onSubmitAnswer={vi.fn()}
+        onExpired={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Time remaining: 30s")).toBeInTheDocument();
+    dateNow.mockRestore();
+  });
+
   it("shows exactly four options and submits only after explicit confirmation", async () => {
     const user = userEvent.setup();
     const onSelectAnswer = vi.fn();

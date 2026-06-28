@@ -181,6 +181,7 @@ describe("gameStore", () => {
     expect(selectPieceOnTile(session, "tile-0-0")?.id).toBe("piece-1");
     expect(selectBoardCells(session)[0]).toMatchObject({ x: 0, y: 0 });
     expect(selectPlayerDisplayName(session.players[0])).toBe("Alice");
+    expect(selectPlayerDisplayName({ ...session.players[0], displayName: null })).toBe("Player 1");
     expect(selectSelectablePieces(session, "user-1")).toHaveLength(1);
   });
 

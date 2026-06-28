@@ -4,15 +4,39 @@ import { describe, expect, it, vi } from "vitest";
 import { gameSessionFixture } from "../../tests/fixtures/gameFixtures";
 import { GameBoard } from "./GameBoard";
 
+const categories = [
+  {
+    id: "cat-0",
+    name: "C#",
+    description: "C# questions",
+    color: "#7C3AED",
+    createdAtUtc: "2026-06-16T10:00:00.000Z",
+    updatedAtUtc: null,
+    isActive: true,
+    deletedAtUtc: null,
+  },
+  {
+    id: "cat-1",
+    name: "Biology",
+    description: "Biology questions",
+    color: "#16A34A",
+    createdAtUtc: "2026-06-16T10:00:00.000Z",
+    updatedAtUtc: null,
+    isActive: true,
+    deletedAtUtc: null,
+  },
+];
+
 describe("GameBoard", () => {
   it("renders authoritative dimensions, tile coordinates, and active pieces", () => {
-    render(<GameBoard session={gameSessionFixture()} currentUserId="user-1" />);
+    render(<GameBoard session={gameSessionFixture()} categories={categories} currentUserId="user-1" />);
 
     const board = screen.getByRole("grid", { name: /game board/i });
     expect(board).toHaveStyle({ gridTemplateColumns: "repeat(3, minmax(0, 1fr))" });
     expect(screen.getAllByRole("gridcell")).toHaveLength(6);
     expect(screen.getByRole("gridcell", { name: /row 1 column 1/i })).toBeInTheDocument();
     expect(within(screen.getByRole("gridcell", { name: /row 1 column 1/i })).getByText("P1")).toBeInTheDocument();
+    expect(screen.getAllByLabelText("Category: C#").length).toBeGreaterThan(0);
   });
 
   it("does not render captured pieces on tiles", () => {

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { GameBoard } from "./GameBoard";
 import { GamePlayerPanel } from "./GamePlayerPanel";
 import { GameStatusBar } from "./GameStatusBar";
+import { GameCategoryLegend } from "./GameCategoryLegend";
 import { useGameSession } from "./useGameSession";
 import { useGameStore } from "../../stores/gameStore";
 import { QuestionModal } from "../conquest/QuestionModal";
@@ -16,6 +17,7 @@ export function GameSessionPage() {
   const navigate = useNavigate();
   const {
     session,
+    categories,
     blockingError,
     connection,
     currentUserId,
@@ -93,6 +95,7 @@ export function GameSessionPage() {
       <div className="game-layout">
         <GameBoard
           session={session}
+          categories={categories}
           currentUserId={currentUserId}
           selectedPieceId={selectedPieceId}
           candidateTargets={candidateTargets}
@@ -100,7 +103,10 @@ export function GameSessionPage() {
           onPieceSelect={selectPiece}
           onTargetSelect={(target) => void moveSelectedPiece(target)}
         />
-        <GamePlayerPanel session={session} currentUserId={currentUserId} />
+        <div className="game-sidebar">
+          <GamePlayerPanel session={session} currentUserId={currentUserId} />
+          <GameCategoryLegend session={session} categories={categories} />
+        </div>
       </div>
       <QuestionModal
         question={conquestState.question}

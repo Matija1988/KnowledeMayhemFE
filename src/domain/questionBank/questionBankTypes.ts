@@ -4,6 +4,7 @@ export type Category = {
   id: string;
   name: string;
   description: string;
+  color: string;
   createdAtUtc: string;
   updatedAtUtc: string | null;
   isActive: boolean;
@@ -60,6 +61,7 @@ export type PaginatedResult<T> = {
 export type CategoryFormValue = {
   name: string;
   description: string;
+  color: string;
 };
 
 export type CategoryFieldErrors = Partial<Record<keyof CategoryFormValue, string>>;
@@ -119,6 +121,7 @@ export function validateCategoryForm(value: CategoryFormValue): CategoryFieldErr
   const errors: CategoryFieldErrors = {};
   const name = value.name.trim();
   const description = value.description.trim();
+  const color = value.color.trim();
 
   if (!name) {
     errors.name = "Enter a category name.";
@@ -130,6 +133,10 @@ export function validateCategoryForm(value: CategoryFormValue): CategoryFieldErr
     errors.description = "Enter a category description.";
   } else if (description.length > 300) {
     errors.description = "Category description must be 300 characters or fewer.";
+  }
+
+  if (!/^#[0-9A-F]{6}$/i.test(color)) {
+    errors.color = "Choose a valid category color.";
   }
 
   return errors;

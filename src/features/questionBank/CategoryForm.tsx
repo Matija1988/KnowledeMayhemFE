@@ -13,11 +13,11 @@ type CategoryFormProps = {
 };
 
 export function CategoryForm({ category, isPending = false, onSubmit, onCancel }: CategoryFormProps) {
-  const [value, setValue] = useState<CategoryFormValue>({ name: "", description: "" });
+  const [value, setValue] = useState<CategoryFormValue>({ name: "", description: "", color: "#3B82F6" });
   const [errors, setErrors] = useState<ReturnType<typeof validateCategoryForm>>({});
 
   useEffect(() => {
-    setValue({ name: category?.name ?? "", description: category?.description ?? "" });
+    setValue({ name: category?.name ?? "", description: category?.description ?? "", color: category?.color ?? "#3B82F6" });
     setErrors({});
   }, [category]);
 
@@ -52,6 +52,18 @@ export function CategoryForm({ category, isPending = false, onSubmit, onCancel }
           aria-describedby={errors.description ? "category-description-error" : undefined}
           onChange={(event) => setValue((current) => ({ ...current, description: event.target.value }))}
         />
+      </FormField>
+      <FormField id="category-color" label="Color" error={errors.color}>
+        <div className="category-color-field">
+          <Input
+            id="category-color"
+            type="color"
+            value={value.color}
+            aria-describedby={errors.color ? "category-color-error" : "category-color-value"}
+            onChange={(event) => setValue((current) => ({ ...current, color: event.target.value.toUpperCase() }))}
+          />
+          <output id="category-color-value" htmlFor="category-color">{value.color.toUpperCase()}</output>
+        </div>
       </FormField>
       <div className="question-bank-actions">
         <Button type="submit" isLoading={isPending}>

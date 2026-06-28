@@ -16,7 +16,7 @@ describe("useQuestionBankActions", () => {
     expect(useQuestionBankStore.getState().categories).toHaveLength(2);
 
     await act(async () => {
-      await result.current.saveCategory({ name: "Conflict", description: "Conflict" });
+      await result.current.saveCategory({ name: "Conflict", description: "Conflict", color: "#64748B" });
     });
     expect(useQuestionBankStore.getState().conflictMessage).toContain("Another staff user");
   });

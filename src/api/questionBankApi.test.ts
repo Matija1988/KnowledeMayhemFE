@@ -19,11 +19,13 @@ import { questionPageFixture } from "../tests/fixtures/questionBankFixtures";
 describe("questionBankApi", () => {
   it("calls category endpoints and maps responses", async () => {
     await expect(listCategories({ accessToken: "token" })).resolves.toHaveLength(2);
-    await expect(createCategory({ name: "Java", description: "Language" }, { accessToken: "token" })).resolves.toMatchObject({
+    await expect(createCategory({ name: "Java", description: "Language", color: "#EA580C" }, { accessToken: "token" })).resolves.toMatchObject({
       name: "Java",
+      color: "#EA580C",
     });
-    await expect(updateCategory("cat-1", { name: "C#", description: "Updated" }, { accessToken: "token" })).resolves.toMatchObject({
+    await expect(updateCategory("cat-1", { name: "C#", description: "Updated", color: "#2563EB" }, { accessToken: "token" })).resolves.toMatchObject({
       description: "Updated",
+      color: "#2563EB",
     });
     await expect(deleteCategory("cat-1", { accessToken: "token" })).resolves.toBeUndefined();
   });

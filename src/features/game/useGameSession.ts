@@ -1,6 +1,8 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getUserIdFromJwt } from "../../domain/auth";
 import { getGameSession, normalizeGameError } from "../../api/gameApi";
+import { listCategories } from "../../api/questionBankApi";
+import type { Category } from "../../domain/questionBank/questionBankTypes";
 import { useConquestActions } from "../conquest/useConquestActions";
 import { useBattleActions } from "../battle/useBattleActions";
 import {
@@ -45,6 +47,7 @@ export function useGameSession(sessionId: string | undefined) {
   const setConnection = useGameStore((state) => state.setConnection);
   const resetConquest = useConquestStore((state) => state.resetConquest);
   const resetBattle = useBattleStore((state) => state.resetBattle);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   const loadSession = useCallback(async () => {
     if (!sessionId || !accessToken) {
@@ -85,6 +88,23 @@ export function useGameSession(sessionId: string | undefined) {
     },
     [accessToken, applyGameSnapshot, requestSnapshotRefresh, sessionId],
   );
+
+  const loadCategories = useCallback(async () => {
+    if (!accessToken) {
+      return;
+    }
+
+    try {
+      setCategories(await listCategories({ accessToken }));
+    } catch {
+      setCategories([]);
+      showError({
+        title: "Category legend unavailable",
+        message: "Category names and colors could not be loaded. The game can continue.",
+        displayMode: "toast",
+      });
+    }
+  }, [accessToken, showError]);
 
   const currentUserId = accessToken ? getUserIdFromJwt(accessToken) : null;
   const currentPlayerId = selectCurrentUserPlayer(session, currentUserId)?.id ?? null;
@@ -132,7 +152,8 @@ export function useGameSession(sessionId: string | undefined) {
     resetConquest();
     resetBattle();
     void loadSession();
-  }, [loadSession, resetBattle, resetConquest, resetGame]);
+    void loadCategories();
+  }, [loadCategories, loadSession, resetBattle, resetConquest, resetGame]);
 
   useEffect(() => {
     if (!sessionId || !accessToken || import.meta.env.MODE === "test") {
@@ -355,6 +376,7 @@ export function useGameSession(sessionId: string | undefined) {
 
   return {
     session,
+    categories,
     blockingError,
     connection,
     currentUserId,

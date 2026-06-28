@@ -16,6 +16,6 @@ describe("CategoryForm", () => {
     await user.type(screen.getByLabelText("Name"), "C#");
     await user.type(screen.getByLabelText("Description"), "Language");
     await user.click(screen.getByRole("button", { name: /create category/i }));
-    expect(onSubmit).toHaveBeenCalledWith({ name: "C#", description: "Language" });
+    expect(onSubmit).toHaveBeenCalledWith({ name: "C#", description: "Language", color: "#3B82F6" });
   });
 });
