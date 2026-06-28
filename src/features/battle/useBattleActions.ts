@@ -6,6 +6,7 @@ import {
   submitBattleAnswer,
   submitSpecialFieldAnswer,
 } from "../../api/battleApi";
+import { HttpError } from "../../api/httpClient";
 import type { BattleQuestion, BattleResult } from "../../domain/battle/battleTypes";
 import type { BoardCoordinate, BoardTile, GameSession } from "../../domain/game/gameTypes";
 import { findTileByCoordinate, isCandidateTarget } from "../../domain/game/gameMovement";
@@ -239,8 +240,15 @@ export function useBattleActions({ session, accessToken, currentPlayerId, select
         title: normalized.title,
         message: normalized.message,
       });
-      showError(normalized);
-      useBattleStore.getState().failAttempt(normalized.message);
+      if (isExpiredOrConflictingAttempt(error, normalized.message)) {
+        useBattleStore.getState().expirePending();
+        requestSnapshotRefresh("Question expired. Refreshing game state.");
+        await reload?.();
+        useBattleStore.getState().clearExpiredAttempt();
+      } else {
+        showError(normalized);
+        useBattleStore.getState().failAttempt(normalized.message);
+      }
     } finally {
       useBattleStore.getState().endAnswer();
       endOperation();
@@ -256,15 +264,18 @@ export function useBattleActions({ session, accessToken, currentPlayerId, select
     hideLoading,
     pendingAnswer,
     question,
+    reload,
+    requestSnapshotRefresh,
     selectedAnswerId,
     showError,
     showLoading,
   ]);
 
-  const expirePending = useCallback(() => {
+  const expirePending = useCallback(async () => {
     useBattleStore.getState().expirePending();
     requestSnapshotRefresh("Question expired. Waiting for authoritative result.");
-    void reload?.();
+    await reload?.();
+    useBattleStore.getState().clearExpiredAttempt();
   }, [reload, requestSnapshotRefresh]);
 
   useEffect(() => {
@@ -287,6 +298,10 @@ export function useBattleActions({ session, accessToken, currentPlayerId, select
     receiveQuestion,
     applyBattleResult,
   };
+}
+
+function isExpiredOrConflictingAttempt(error: unknown, message: string): boolean {
+  return (error instanceof HttpError && error.status === 409) || /expired|no longer be answered/i.test(message);
 }
 
 function validateBattleTarget(

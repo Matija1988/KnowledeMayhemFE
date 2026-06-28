@@ -273,22 +273,59 @@ export function isSpecialFieldQuestionEvent(payload: unknown): payload is Battle
 }
 
 export function isBattleResultEvent(payload: unknown): payload is BattleResultDto {
+  const result = payload as BattleResultDto;
   return (
     typeof payload === "object" &&
     payload !== null &&
-    typeof (payload as BattleResultDto).battleAttemptId === "string" &&
+    typeof result.battleAttemptId === "string" &&
     !Array.isArray((payload as BattleQuestionDto).answerOptions) &&
-    (typeof (payload as BattleResultDto).status === "string" || typeof (payload as BattleResultDto).resultStatus === "string")
+    !isBattleAttemptLifecycleEvent(payload) &&
+    (isResolvedBattleStatus(result.resultStatus ?? result.status) || isFailedBattleResultShape(result))
   );
 }
 
 export function isSpecialFieldResultEvent(payload: unknown): payload is BattleResultDto {
+  const result = payload as BattleResultDto;
   return (
     typeof payload === "object" &&
     payload !== null &&
-    typeof (payload as BattleResultDto).specialFieldAttemptId === "string" &&
+    typeof result.specialFieldAttemptId === "string" &&
     !Array.isArray((payload as BattleQuestionDto).answerOptions) &&
-    (typeof (payload as BattleResultDto).status === "string" || typeof (payload as BattleResultDto).resultStatus === "string")
+    !isBattleAttemptLifecycleEvent(payload) &&
+    (isResolvedBattleStatus(result.resultStatus ?? result.status) || isFailedBattleResultShape(result))
+  );
+}
+
+export function isBattleAttemptLifecycleEvent(payload: unknown): boolean {
+  if (typeof payload !== "object" || payload === null) {
+    return false;
+  }
+
+  const event = payload as BattleQuestionDto;
+  return (
+    (typeof event.battleAttemptId === "string" || typeof event.specialFieldAttemptId === "string") &&
+    typeof event.correctAnswers === "number" &&
+    typeof event.requiredCorrectAnswers === "number" &&
+    !Array.isArray(event.answerOptions)
+  );
+}
+
+function isResolvedBattleStatus(value: unknown): boolean {
+  if (typeof value !== "string") {
+    return false;
+  }
+
+  return ["succeeded", "success", "conquered", "failed", "failure", "expired", "cancelled", "canceled"].includes(
+    value.toLowerCase(),
+  );
+}
+
+function isFailedBattleResultShape(result: BattleResultDto): boolean {
+  return (
+    typeof result.reason === "string" &&
+    (typeof result.pieceId === "string" || typeof result.attackingPieceId === "string") &&
+    typeof result.sourceTileId === "string" &&
+    typeof result.targetTileId === "string"
   );
 }
 

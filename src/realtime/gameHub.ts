@@ -7,6 +7,7 @@ import {
   gameEventNames,
   isBattleQuestionEvent,
   isBattleResultEvent,
+  isBattleAttemptLifecycleEvent,
   isConquestResultEvent,
   isGameActionResult,
   isGameMoveExecutedEvent,
@@ -107,6 +108,12 @@ export function registerGameHubHandlers(connection: HubLike, handlers: GameHubHa
       }
       if (isSpecialFieldQuestionEvent(payload)) {
         handlers.onBattleQuestion?.(toSpecialFieldQuestionEvent(payload));
+        return;
+      }
+      // Started/progress notifications carry no board mutation. In particular, the
+      // final progress event may say "Succeeded" immediately before the authoritative
+      // result, so it must never be treated as the result itself.
+      if (isBattleAttemptLifecycleEvent(payload)) {
         return;
       }
       if (isSpecialFieldResultEvent(payload)) {

@@ -14,8 +14,8 @@ import { createGameHubConnection, joinGameSessionHubGroup, registerGameHubHandle
 import { subscribeToGameBroadcast } from "../../realtime/gameBroadcast";
 import { useAuthStore } from "../../stores/authStore";
 import { selectCurrentUserPlayer } from "../../stores/gameStore";
-import { useConquestStore } from "../../stores/conquestStore";
-import { useBattleStore } from "../../stores/battleStore";
+import { selectHasPendingConquest, useConquestStore } from "../../stores/conquestStore";
+import { selectHasPendingBattle, useBattleStore } from "../../stores/battleStore";
 import { useErrorStore } from "../../stores/errorStore";
 import { useGameStore } from "../../stores/gameStore";
 import { useLoadingStore } from "../../stores/loadingStore";
@@ -126,6 +126,8 @@ export function useGameSession(sessionId: string | undefined) {
     receiveQuestion: receiveBattleQuestion,
     applyBattleResult,
   } = battle;
+  const hasPendingConquest = selectHasPendingConquest(conquestState);
+  const hasPendingBattle = selectHasPendingBattle(battleState);
 
   useEffect(() => {
     resetGame();
@@ -135,7 +137,14 @@ export function useGameSession(sessionId: string | undefined) {
   }, [loadSession, resetBattle, resetConquest, resetGame]);
 
   useEffect(() => {
-    if (!sessionId || !accessToken || session?.status !== "InProgress" || import.meta.env.MODE === "test") {
+    if (
+      !sessionId ||
+      !accessToken ||
+      session?.status !== "InProgress" ||
+      hasPendingConquest ||
+      hasPendingBattle ||
+      import.meta.env.MODE === "test"
+    ) {
       return;
     }
 
@@ -144,7 +153,7 @@ export function useGameSession(sessionId: string | undefined) {
     }, 3000);
 
     return () => window.clearInterval(intervalId);
-  }, [accessToken, refreshAuthoritativeSession, session?.status, sessionId]);
+  }, [accessToken, hasPendingBattle, hasPendingConquest, refreshAuthoritativeSession, session?.status, sessionId]);
 
   useEffect(() => {
     if (!sessionId || !accessToken || import.meta.env.MODE === "test") {

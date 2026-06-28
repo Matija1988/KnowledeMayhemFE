@@ -20,5 +20,16 @@ describe("QuestionTimer", () => {
     vi.advanceTimersByTime(2500);
     expect(onExpired).toHaveBeenCalledTimes(1);
   });
+
+  it("does not expire while an answer submission is in flight", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-17T10:00:00.000Z"));
+    const onExpired = vi.fn();
+
+    render(<QuestionTimer expiresAtUtc="2026-06-17T10:00:01.000Z" disabled onExpired={onExpired} />);
+
+    vi.advanceTimersByTime(5000);
+    expect(onExpired).not.toHaveBeenCalled();
+  });
 });
 

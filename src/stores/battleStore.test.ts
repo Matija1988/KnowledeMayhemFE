@@ -22,4 +22,16 @@ describe("battleStore", () => {
     expect(useBattleStore.getState().applyResult(result)).toBe(false);
     expect(useBattleStore.getState().applyResult(battleResultFixture({ attemptId: "battle-2", sequence: 1 }))).toBe(false);
   });
+
+  it("clears an expired question after authoritative state refresh", () => {
+    resetBattleStoreForTests();
+    useBattleStore.getState().receiveQuestion(battleQuestionFixture({ attemptKind: "SpecialField" }));
+    useBattleStore.getState().expirePending();
+
+    useBattleStore.getState().clearExpiredAttempt();
+
+    expect(useBattleStore.getState().question).toBeNull();
+    expect(useBattleStore.getState().expiredPending).toBe(false);
+    expect(selectHasPendingBattle(useBattleStore.getState())).toBe(false);
+  });
 });

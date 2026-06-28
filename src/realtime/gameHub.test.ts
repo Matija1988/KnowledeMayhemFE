@@ -57,7 +57,25 @@ describe("gameHub", () => {
     });
     callbacks.get("BattleQuestionIssuedEvent")?.({ ...battleQuestionFixture(), battleAttemptId: "battle-1" });
     callbacks.get("SpecialFieldQuestionIssuedEvent")?.({ ...specialFieldQuestionFixture(), specialFieldAttemptId: "special-1" });
+    callbacks.get("SpecialFieldProgressUpdatedEvent")?.({
+      gameSessionId: "session-1",
+      specialFieldAttemptId: "special-1",
+      correctAnswers: 3,
+      requiredCorrectAnswers: 3,
+      status: "Succeeded",
+    });
     callbacks.get("BattleSucceededEvent")?.({ ...battleResultFixture({ session: null }), battleAttemptId: "battle-1" });
+    callbacks.get("SpecialFieldFailedEvent")?.({
+      gameSessionId: "session-1",
+      specialFieldAttemptId: "special-1",
+      actingPlayerId: "player-1",
+      pieceId: "piece-1",
+      sourceTileId: "tile-0-0",
+      targetTileId: "tile-1-0",
+      reason: "Expired",
+      nextTurnPlayerId: "player-2",
+      turnNumber: 2,
+    });
     callbacks.get("PieceCapturedEvent")?.({ gameSessionId: "session-1", pieceId: "piece-2", removedFromTileId: "tile-2-1" });
     callbacks.get("PieceLeveledUpEvent")?.({ gameSessionId: "session-1", pieceId: "piece-1", newLevel: 2 });
     callbacks.get("GameSnapshotRequiredEvent")?.({ gameSessionId: "session-1", reason: "missed-event" });
@@ -70,9 +88,12 @@ describe("gameHub", () => {
     expect(handlers.onBattleQuestion).toHaveBeenCalledWith(expect.objectContaining({ attemptKind: "Battle" }));
     expect(handlers.onBattleQuestion).toHaveBeenCalledWith(expect.objectContaining({ attemptKind: "SpecialField" }));
     expect(handlers.onBattleResult).toHaveBeenCalledWith(expect.objectContaining({ status: "Succeeded" }));
+    expect(handlers.onBattleResult).toHaveBeenCalledWith(expect.objectContaining({ attemptKind: "SpecialField", status: "Expired" }));
+    expect(handlers.onBattleResult).toHaveBeenCalledTimes(2);
     expect(handlers.onPieceCaptured).toHaveBeenCalledWith(expect.objectContaining({ pieceId: "piece-2" }));
     expect(handlers.onPieceLeveledUp).toHaveBeenCalledWith(expect.objectContaining({ newLevel: 2 }));
     expect(handlers.onSnapshotRequired).toHaveBeenCalledWith(expect.objectContaining({ reason: "missed-event" }));
+    expect(handlers.onPatchNeedsRefresh).not.toHaveBeenCalled();
     expect(connection.onreconnecting).toHaveBeenCalled();
   });
 

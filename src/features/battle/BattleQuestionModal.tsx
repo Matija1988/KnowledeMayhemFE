@@ -65,7 +65,7 @@ export function BattleQuestionModal({
             <p className="conquest-category">{question.categoryName ?? question.categoryId}</p>
             <p className="conquest-question">{question.questionText}</p>
             <BattleProgressPanel question={question} expiredPending={expiredPending} />
-            <QuestionTimer expiresAtUtc={question.expiresAtUtc} disabled={Boolean(result)} onExpired={onExpired} />
+            <QuestionTimer expiresAtUtc={question.expiresAtUtc} disabled={Boolean(result) || pendingAnswer} onExpired={onExpired} />
             <div role="group" aria-label="Answer options" className="conquest-answer-grid">
               {question.answerOptions.map((option) => (
                 <BattleAnswerOptionButton

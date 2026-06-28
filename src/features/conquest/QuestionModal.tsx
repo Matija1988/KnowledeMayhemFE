@@ -62,7 +62,7 @@ export function QuestionModal({
           <>
             <p className="conquest-category">{question.categoryName ?? question.categoryId}</p>
             <p className="conquest-question">{question.questionText}</p>
-            <QuestionTimer expiresAtUtc={question.expiresAtUtc} disabled={Boolean(result)} onExpired={onExpired} />
+            <QuestionTimer expiresAtUtc={question.expiresAtUtc} disabled={Boolean(result) || pendingAnswer} onExpired={onExpired} />
             {expiredPending ? (
               <p role="status" className="conquest-expired">
                 This question expired. Waiting for the game to resolve the attempt.

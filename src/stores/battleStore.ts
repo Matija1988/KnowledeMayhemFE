@@ -9,6 +9,7 @@ type BattleStore = BattleUiState & {
   beginAnswer: () => void;
   endAnswer: () => void;
   expirePending: () => void;
+  clearExpiredAttempt: () => void;
   applyResult: (result: BattleResult, now?: Date) => boolean;
   clearResult: () => void;
   clearBlockingError: () => void;
@@ -77,6 +78,21 @@ export const useBattleStore = create<BattleStore>((set, get) => ({
         pendingAnswer: false,
         selectedAnswerId: null,
         liveMessage: "Question expired. Waiting for authoritative result.",
+      };
+    }),
+  clearExpiredAttempt: () =>
+    set((state) => {
+      if (!state.expiredPending || state.lastResult) {
+        return {};
+      }
+      return {
+        question: null,
+        selectedAnswerId: null,
+        pendingAttempt: false,
+        pendingAnswer: false,
+        expiredPending: false,
+        blockingError: null,
+        liveMessage: "Question expired. Turn advanced.",
       };
     }),
   applyResult: (result, now = new Date()) => {

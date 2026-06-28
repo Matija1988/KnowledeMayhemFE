@@ -4,6 +4,7 @@ import {
   gameEventNames,
   isBattleQuestionEvent,
   isBattleResultEvent,
+  isBattleAttemptLifecycleEvent,
   isGameMoveExecutedEvent,
   isGameSnapshotRequiredEvent,
   isGameTileOwnershipChangedEvent,
@@ -108,6 +109,16 @@ describe("gameEvents", () => {
       nextTurnPlayerId: "player-2",
       turnNumber: 2,
     };
+    const expiredSpecialResult: BattleResultDto = {
+      specialFieldAttemptId: "special-1",
+      gameSessionId: "session-1",
+      pieceId: "piece-1",
+      sourceTileId: "tile-0-0",
+      targetTileId: "tile-1-0",
+      reason: "Expired",
+      nextTurnPlayerId: "player-2",
+      turnNumber: 2,
+    };
 
     expect(gameEventNames.battleQuestionIssued).toBe("BattleQuestionIssuedEvent");
     expect(isBattleQuestionEvent(battleQuestion)).toBe(true);
@@ -117,6 +128,21 @@ describe("gameEvents", () => {
     expect(isBattleResultEvent(battleResult)).toBe(true);
     expect(isSpecialFieldResultEvent(specialResult)).toBe(true);
     expect(isSpecialFieldResultEvent(specialConqueredResult)).toBe(true);
+    expect(isSpecialFieldResultEvent(expiredSpecialResult)).toBe(true);
+    expect(toSpecialFieldResultEvent(expiredSpecialResult)).toMatchObject({
+      attemptKind: "SpecialField",
+      status: "Expired",
+      reason: "Expired",
+    });
+    const completedSpecialProgress = {
+      gameSessionId: "session-1",
+      specialFieldAttemptId: "special-1",
+      correctAnswers: 3,
+      requiredCorrectAnswers: 3,
+      status: "Succeeded",
+    };
+    expect(isBattleAttemptLifecycleEvent(completedSpecialProgress)).toBe(true);
+    expect(isSpecialFieldResultEvent(completedSpecialProgress)).toBe(false);
     expect(toBattleQuestionEvent(battleQuestion).attemptKind).toBe("Battle");
     expect(toSpecialFieldQuestionEvent(specialQuestion).progress.requiredCorrectAnswers).toBe(3);
     expect(toBattleResultEvent(battleResult).status).toBe("Succeeded");

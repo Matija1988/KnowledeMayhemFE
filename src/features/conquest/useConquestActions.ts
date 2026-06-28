@@ -1,5 +1,6 @@
 import { useCallback, useEffect } from "react";
 import { normalizeConquestError, startConquestAttempt, submitConquestAnswer } from "../../api/conquestApi";
+import { HttpError } from "../../api/httpClient";
 import type { BoardCoordinate, GameSession } from "../../domain/game/gameTypes";
 import { validateConquestTarget } from "../../domain/conquest/conquestRules";
 import type { ConquestResult, GameplayQuestion, QuestionAttemptEvent } from "../../domain/conquest/conquestTypes";
@@ -158,8 +159,15 @@ export function useConquestActions({
       applyConquestResult(result);
     } catch (error) {
       const normalized = normalizeConquestError(error);
-      showError(normalized);
-      useConquestStore.getState().failAttempt(normalized.message);
+      if (isExpiredOrConflictingAttempt(error, normalized.message)) {
+        useConquestStore.getState().expirePending();
+        requestSnapshotRefresh("Question expired. Refreshing game state.");
+        await reload?.();
+        useConquestStore.getState().clearExpiredAttempt();
+      } else {
+        showError(normalized);
+        useConquestStore.getState().failAttempt(normalized.message);
+      }
     } finally {
       useConquestStore.getState().endAnswer();
       endOperation();
@@ -175,15 +183,18 @@ export function useConquestActions({
     hideLoading,
     pendingAnswer,
     question,
+    reload,
+    requestSnapshotRefresh,
     selectedAnswerId,
     showError,
     showLoading,
   ]);
 
-  const expirePending = useCallback(() => {
+  const expirePending = useCallback(async () => {
     useConquestStore.getState().expirePending();
     requestSnapshotRefresh("Question expired. Waiting for authoritative result.");
-    void reload?.();
+    await reload?.();
+    useConquestStore.getState().clearExpiredAttempt();
   }, [reload, requestSnapshotRefresh]);
 
   useEffect(() => {
@@ -205,4 +216,8 @@ export function useConquestActions({
     receiveAttempt,
     applyConquestResult,
   };
+}
+
+function isExpiredOrConflictingAttempt(error: unknown, message: string): boolean {
+  return (error instanceof HttpError && error.status === 409) || /expired|no longer be answered/i.test(message);
 }

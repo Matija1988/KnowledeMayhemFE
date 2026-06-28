@@ -63,6 +63,7 @@ export type BattleResultDto = {
   reason?: string | null;
   movedPieceId?: string;
   pieceId?: string;
+  attackingPieceId?: string;
   capturedPieceId?: string;
   defendingPieceId?: string;
   leveledPieceId?: string;
@@ -156,7 +157,7 @@ export function mapBattleProgress(progress: BattleProgressDto | undefined, fallb
 
 export function mapBattleResult(dto: BattleResultDto, fallback: BattleResultFallback): BattleResult {
   const attemptKind = fallback.attemptKind;
-  const status = normalizeStatus(dto.resultStatus ?? dto.status);
+  const status = normalizeStatus(dto.resultStatus ?? dto.status ?? statusFromReason(dto.reason));
   if (!resolvedStatuses.has(status)) {
     throw new Error("Battle result response must be resolved.");
   }
@@ -169,7 +170,7 @@ export function mapBattleResult(dto: BattleResultDto, fallback: BattleResultFall
     gameSessionId: requiredString(dto.gameSessionId ?? dto.session?.id ?? dto.session?.sessionId ?? fallback.gameSessionId, "gameSessionId"),
     status: status as ResolvedBattleAttemptStatus,
     reason: dto.reason ?? null,
-    movedPieceId: dto.movedPieceId ?? dto.pieceId ?? fallback.pieceId ?? null,
+    movedPieceId: dto.movedPieceId ?? dto.pieceId ?? dto.attackingPieceId ?? fallback.pieceId ?? null,
     capturedPieceId: dto.capturedPieceId ?? dto.defendingPieceId ?? null,
     leveledPieceId: dto.leveledPieceId ?? null,
     newLevel: typeof dto.newLevel === "number" ? dto.newLevel : null,
@@ -181,6 +182,20 @@ export function mapBattleResult(dto: BattleResultDto, fallback: BattleResultFall
     sequence: typeof dto.sequence === "number" ? dto.sequence : null,
     session: dto.session ? mapGameSession(dto.session) : null,
   };
+}
+
+function statusFromReason(reason: string | null | undefined): BattleAttemptStatus | undefined {
+  if (!reason) {
+    return undefined;
+  }
+  const lower = reason.toLowerCase();
+  if (lower === "expired") {
+    return "Expired";
+  }
+  if (lower === "cancelled" || lower === "canceled") {
+    return "Cancelled";
+  }
+  return "Failed";
 }
 
 function normalizeStatus(value: unknown): BattleAttemptStatus {

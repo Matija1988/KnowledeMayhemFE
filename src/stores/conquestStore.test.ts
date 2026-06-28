@@ -39,14 +39,22 @@ describe("conquestStore", () => {
     expect(useConquestStore.getState().lastResult?.questionAttemptId).toBe("attempt-1");
   });
 
-  it("enters expired pending state until an authoritative result arrives", () => {
+  it("clears a frozen answer and modal after authoritative expiration refresh", () => {
     act(() => {
       useConquestStore.getState().receiveQuestion(gameplayQuestionFixture());
+      useConquestStore.getState().beginAnswer();
       useConquestStore.getState().expirePending();
     });
 
     expect(useConquestStore.getState().expiredPending).toBe(true);
+    expect(useConquestStore.getState().pendingAnswer).toBe(false);
     expect(useConquestStore.getState().selectedAnswerId).toBeNull();
+
+    act(() => useConquestStore.getState().clearExpiredAttempt());
+
+    expect(useConquestStore.getState().question).toBeNull();
+    expect(useConquestStore.getState().expiredPending).toBe(false);
+    expect(selectHasPendingConquest(useConquestStore.getState())).toBe(false);
   });
 });
 

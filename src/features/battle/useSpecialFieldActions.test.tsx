@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { GameSession } from "../../domain/game/gameTypes";
 import { useBattleStore } from "../../stores/battleStore";
 import { useErrorStore } from "../../stores/errorStore";
@@ -88,9 +88,47 @@ describe("useSpecialFieldActions", () => {
     });
     expect(useBattleStore.getState().question?.questionAttemptId).toBe("special-question-2");
 
-    act(() => result.current.expirePending());
-    expect(useBattleStore.getState().expiredPending).toBe(true);
+    await act(async () => result.current.expirePending());
+    expect(useBattleStore.getState().expiredPending).toBe(false);
+    expect(useBattleStore.getState().question).toBeNull();
     expect(useGameStore.getState().pendingOperation).toBe("reconnectGame");
+  });
+
+  it("closes the modal when an in-flight special field answer returns expired", async () => {
+    const session = specialReadySession();
+    const reload = vi.fn().mockResolvedValue(undefined);
+    server.use(
+      http.post("**/api/game-sessions/:gameSessionId/special-field-attempts/:specialFieldAttemptId/answers", () =>
+        HttpResponse.json(
+          {
+            title: "Gameplay attempt expired",
+            detail: "Gameplay attempt 'special-1' is 'Expired' and can no longer be answered.",
+            status: 409,
+          },
+          { status: 409 },
+        ),
+      ),
+    );
+    const { result } = renderHook(() =>
+      useSpecialFieldActions({
+        session,
+        accessToken: "token",
+        currentPlayerId: "player-1",
+        selectedPieceId: "piece-1",
+        reload,
+      }),
+    );
+
+    act(() => {
+      result.current.receiveQuestion(specialFieldQuestionFixture());
+      result.current.selectAnswer("answer-1");
+    });
+    await act(async () => result.current.submitAnswer());
+
+    expect(reload).toHaveBeenCalledOnce();
+    expect(useBattleStore.getState().question).toBeNull();
+    expect(useBattleStore.getState().blockingError).toBeNull();
+    expect(useBattleStore.getState().expiredPending).toBe(false);
   });
 });
 

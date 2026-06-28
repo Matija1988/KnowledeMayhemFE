@@ -10,6 +10,7 @@ type ConquestStore = ConquestUiState & {
   beginAnswer: () => void;
   endAnswer: () => void;
   expirePending: () => void;
+  clearExpiredAttempt: () => void;
   applyResult: (result: ConquestResult, now?: Date) => boolean;
   clearResult: () => void;
   clearBlockingError: () => void;
@@ -82,6 +83,21 @@ export const useConquestStore = create<ConquestStore>((set, get) => ({
         pendingAnswer: false,
         selectedAnswerId: null,
         liveMessage: "Question expired. Waiting for authoritative result.",
+      };
+    }),
+  clearExpiredAttempt: () =>
+    set((state) => {
+      if (!state.expiredPending || state.lastResult) {
+        return {};
+      }
+      return {
+        question: null,
+        selectedAnswerId: null,
+        pendingAttempt: false,
+        pendingAnswer: false,
+        expiredPending: false,
+        blockingError: null,
+        liveMessage: "Question expired. Turn advanced.",
       };
     }),
   applyResult: (result, now = new Date()) => {
