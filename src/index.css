@@ -807,6 +807,19 @@ button[type="submit"]:disabled {
   padding: 1.5rem 0 2rem;
 }
 
+.question-import-format {
+  margin: 1rem 0;
+}
+
+.question-import-format pre {
+  max-width: min(42rem, 75vw);
+  overflow-x: auto;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background: var(--surface-muted, #f1f5f9);
+  font-size: 0.8rem;
+}
+
 .game-result-page {
   min-height: 100vh;
   width: min(1080px, calc(100% - 2rem));

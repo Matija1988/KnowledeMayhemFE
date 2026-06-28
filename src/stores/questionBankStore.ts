@@ -10,6 +10,7 @@ type QuestionBankPendingOperation =
   | "loadQuestions"
   | "loadQuestion"
   | "createQuestion"
+  | "importQuestions"
   | "updateQuestion"
   | "deleteQuestion";
 

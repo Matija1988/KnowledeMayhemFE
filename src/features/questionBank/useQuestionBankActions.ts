@@ -5,11 +5,12 @@ import {
   deleteQuestion,
   listCategories,
   listManagementQuestions,
+  importQuestions as importQuestionsApi,
   normalizeQuestionBankError,
   updateCategory,
   updateQuestion,
 } from "../../api/questionBankApi";
-import type { CategoryFormValue, QuestionFilter, QuestionFormValue } from "../../domain/questionBank/questionBankTypes";
+import type { CategoryFormValue, QuestionFilter, QuestionFormValue, QuestionImportItem } from "../../domain/questionBank/questionBankTypes";
 import { useAuthStore } from "../../stores/authStore";
 import { useErrorStore } from "../../stores/errorStore";
 import { useLoadingStore } from "../../stores/loadingStore";
@@ -95,5 +96,9 @@ export function useQuestionBankActions() {
         await deleteQuestion(questionId, { accessToken: token });
         return true;
       }),
+    importQuestions: (categoryId: string, questions: QuestionImportItem[]) =>
+      run("importQuestions", "importQuestions", (token) =>
+        importQuestionsApi(categoryId, questions, { accessToken: token }),
+      ),
   };
 }

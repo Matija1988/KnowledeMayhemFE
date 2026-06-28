@@ -6,6 +6,7 @@ import {
   deleteCategory,
   deleteQuestion,
   listCategories,
+  importQuestions,
   listManagementQuestions,
   normalizeQuestionBankError,
   updateCategory,
@@ -49,6 +50,10 @@ describe("questionBankApi", () => {
     });
     await expect(updateQuestion("q-1", value, { accessToken: "token" })).resolves.toMatchObject({ text: "What is C#?" });
     await expect(deleteQuestion("q-1", { accessToken: "token" })).resolves.toBeUndefined();
+    await expect(importQuestions(value.categoryId, [value], { accessToken: "token" })).resolves.toMatchObject({
+      categoryId: value.categoryId,
+      importedCount: 1,
+    });
   });
 
   it("sends management category filters as backend category names", async () => {

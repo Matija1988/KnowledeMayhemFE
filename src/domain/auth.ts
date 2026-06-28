@@ -87,6 +87,7 @@ export type LoadingState = {
     | "listQuestions"
     | "readQuestion"
     | "createQuestion"
+    | "importQuestions"
     | "updateQuestion"
     | "deleteQuestion"
     | "readAccountSettings"

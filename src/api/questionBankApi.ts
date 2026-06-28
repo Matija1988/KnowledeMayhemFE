@@ -20,6 +20,8 @@ import type {
   QuestionBankActionError,
   QuestionFilter,
   QuestionFormValue,
+  QuestionImportItem,
+  QuestionImportResult,
 } from "../domain/questionBank/questionBankTypes";
 
 type QuestionBankRequestOptions = {
@@ -112,6 +114,21 @@ export async function deleteQuestion(questionId: string, options: QuestionBankRe
     {
       method: "DELETE",
       accessToken: options.accessToken,
+    },
+  );
+}
+
+export async function importQuestions(
+  categoryId: string,
+  questions: QuestionImportItem[],
+  options: QuestionBankRequestOptions,
+): Promise<QuestionImportResult> {
+  return authenticatedRequestJson<QuestionImportResult, { questions: QuestionImportItem[] }>(
+    `${apiBaseUrl}/api/question-bank/categories/${categoryId}/questions/import`,
+    {
+      method: "POST",
+      accessToken: options.accessToken,
+      body: { questions },
     },
   );
 }

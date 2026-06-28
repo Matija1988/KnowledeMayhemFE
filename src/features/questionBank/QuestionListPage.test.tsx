@@ -18,5 +18,6 @@ describe("QuestionListPage", () => {
     expect(screen.getByLabelText("Search")).toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "Pagination" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Edit" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Import JSON" })).toBeInTheDocument();
   });
 });

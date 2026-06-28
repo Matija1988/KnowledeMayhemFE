@@ -7,6 +7,7 @@ import { Pagination } from "../../components/ui/Pagination";
 import type { Question } from "../../domain/questionBank/questionBankTypes";
 import { useQuestionBankStore } from "../../stores/questionBankStore";
 import { QuestionFilters } from "./QuestionFilters";
+import { QuestionImportModal } from "./QuestionImportModal";
 import { QuestionTable } from "./QuestionTable";
 import { useQuestionBankActions } from "./useQuestionBankActions";
 
@@ -18,6 +19,8 @@ export function QuestionListPage() {
   const setFilters = useQuestionBankStore((state) => state.setFilters);
   const resetFilters = useQuestionBankStore((state) => state.resetFilters);
   const [confirmDelete, setConfirmDelete] = useState<Question | null>(null);
+  const [showImport, setShowImport] = useState(false);
+  const [importMessage, setImportMessage] = useState<string | null>(null);
   const actions = useQuestionBankActions();
 
   useEffect(() => {
@@ -37,14 +40,31 @@ export function QuestionListPage() {
     }
   }
 
+  async function importQuestions(categoryId: string, importedQuestions: Parameters<typeof actions.importQuestions>[1]) {
+    const result = await actions.importQuestions(categoryId, importedQuestions);
+    if (!result) return false;
+
+    const categoryName = categories.find((category) => category.id === categoryId)?.name ?? "the selected category";
+    setImportMessage(`Imported ${result.importedCount} questions into ${categoryName}.`);
+    setShowImport(false);
+    void actions.loadQuestions({ ...filters, pageNumber: 1 });
+    return true;
+  }
+
   return (
     <section className="question-bank-section">
       <div className="question-bank-section__header">
         <h2>Questions</h2>
-        <Link className="ui-button ui-button--primary" to="/admin/question-bank/questions/new">
-          New question
-        </Link>
+        <div className="question-bank-actions">
+          <Button type="button" variant="secondary" onClick={() => setShowImport(true)}>
+            Import JSON
+          </Button>
+          <Link className="ui-button ui-button--primary" to="/admin/question-bank/questions/new">
+            New question
+          </Link>
+        </div>
       </div>
+      {importMessage ? <p role="status">{importMessage}</p> : null}
       <Card>
         <QuestionFilters categories={categories} filters={filters} onChange={setFilters} onReset={resetFilters} />
       </Card>
@@ -71,6 +91,14 @@ export function QuestionListPage() {
             </Button>
           </div>
         </Modal>
+      ) : null}
+      {showImport ? (
+        <QuestionImportModal
+          categories={categories}
+          isPending={pending.includes("importQuestions")}
+          onImport={importQuestions}
+          onClose={() => setShowImport(false)}
+        />
       ) : null}
     </section>
   );

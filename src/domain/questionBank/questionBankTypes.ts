@@ -42,6 +42,17 @@ export type QuestionFormValue = {
   version?: string | null;
 };
 
+export type QuestionImportItem = {
+  text: string;
+  answers: Array<{ text: string; isCorrect: boolean }>;
+};
+
+export type QuestionImportResult = {
+  categoryId: string;
+  importedCount: number;
+  questionIds: string[];
+};
+
 export type QuestionFilter = {
   pageNumber: number;
   pageSize: number;
@@ -181,4 +192,59 @@ export function validateQuestionForm(value: QuestionFormValue, activeCategories:
 
 export function hasFormErrors(errors: Record<string, string | undefined>): boolean {
   return Object.values(errors).some(Boolean);
+}
+
+export function parseQuestionImportJson(contents: string): QuestionImportItem[] {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(contents);
+  } catch {
+    throw new Error("The selected file is not valid JSON.");
+  }
+
+  const questions = Array.isArray(parsed)
+    ? parsed
+    : parsed && typeof parsed === "object" && Array.isArray((parsed as { questions?: unknown }).questions)
+      ? (parsed as { questions: unknown[] }).questions
+      : null;
+
+  if (!questions?.length) {
+    throw new Error('JSON must contain a non-empty "questions" array.');
+  }
+  if (questions.length > 500) {
+    throw new Error("A single file may contain at most 500 questions.");
+  }
+
+  return questions.map((question, questionIndex) => {
+    if (!question || typeof question !== "object") {
+      throw new Error(`Question ${questionIndex + 1} must be an object.`);
+    }
+    const candidate = question as { text?: unknown; answers?: unknown };
+    if (typeof candidate.text !== "string" || !candidate.text.trim()) {
+      throw new Error(`Question ${questionIndex + 1} must contain text.`);
+    }
+    if (!Array.isArray(candidate.answers) || candidate.answers.length !== 4) {
+      throw new Error(`Question ${questionIndex + 1} must contain exactly four answers.`);
+    }
+
+    const answers = candidate.answers.map((answer, answerIndex) => {
+      if (!answer || typeof answer !== "object") {
+        throw new Error(`Answer ${answerIndex + 1} of question ${questionIndex + 1} must be an object.`);
+      }
+      const answerCandidate = answer as { text?: unknown; isCorrect?: unknown };
+      if (typeof answerCandidate.text !== "string" || !answerCandidate.text.trim()) {
+        throw new Error(`Answer ${answerIndex + 1} of question ${questionIndex + 1} must contain text.`);
+      }
+      if (typeof answerCandidate.isCorrect !== "boolean") {
+        throw new Error(`Answer ${answerIndex + 1} of question ${questionIndex + 1} must define isCorrect.`);
+      }
+      return { text: answerCandidate.text.trim(), isCorrect: answerCandidate.isCorrect };
+    });
+
+    if (answers.filter((answer) => answer.isCorrect).length !== 1) {
+      throw new Error(`Question ${questionIndex + 1} must have exactly one correct answer.`);
+    }
+
+    return { text: candidate.text.trim(), answers };
+  });
 }

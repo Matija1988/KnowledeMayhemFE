@@ -23,6 +23,17 @@ export const questionBankHandlers = [
   http.delete("**/api/question-bank/categories/:categoryId", () => new HttpResponse(null, { status: 200 })),
   http.get("**/api/question-bank/management/questions", () => HttpResponse.json(questionPageFixture)),
   http.post("**/api/question-bank/questions", () => HttpResponse.json(managementQuestionFixture, { status: 201 })),
+  http.post("**/api/question-bank/categories/:categoryId/questions/import", async ({ params, request }) => {
+    const body = (await request.json()) as { questions?: unknown[] };
+    return HttpResponse.json(
+      {
+        categoryId: params.categoryId,
+        importedCount: body.questions?.length ?? 0,
+        questionIds: (body.questions ?? []).map((_, index) => `imported-question-${index + 1}`),
+      },
+      { status: 201 },
+    );
+  }),
   http.get("**/api/question-bank/questions/:questionId", () => HttpResponse.json(managementQuestionFixture)),
   http.put("**/api/question-bank/questions/:questionId", () => HttpResponse.json(managementQuestionFixture)),
   http.delete("**/api/question-bank/questions/:questionId", () => new HttpResponse(null, { status: 200 })),
