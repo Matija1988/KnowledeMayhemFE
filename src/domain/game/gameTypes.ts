@@ -75,6 +75,33 @@ export type GameActionResult = {
   turn: TurnState;
 };
 
+export type GameCategoryStatistics = {
+  categoryId: string;
+  categoryName: string;
+  correctAnswers: number;
+  totalAnswers: number;
+  percentage: number;
+};
+
+export type GamePlayerStatistics = {
+  playerId: string;
+  userId: string;
+  displayName: string;
+  pieceColor: string | null;
+  isWinner: boolean;
+  correctAnswers: number;
+  totalAnswers: number;
+  percentage: number;
+  categories: GameCategoryStatistics[];
+};
+
+export type GameCompletionSummary = {
+  gameSessionId: string;
+  winnerPlayerId: string;
+  endedAtUtc: string;
+  players: GamePlayerStatistics[];
+};
+
 export type ConnectionState = {
   status: "idle" | "connecting" | "connected" | "reconnecting" | "disconnected" | "error";
   message: string | null;

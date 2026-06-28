@@ -74,7 +74,7 @@ describe("GameSessionPage", () => {
     expect(screen.getAllByRole("gridcell").every((cell) => cell.getAttribute("aria-disabled") === "true")).toBe(true);
   });
 
-  it("notifies the remaining player about victory and redirects to lobby when a 1v1 game completes", async () => {
+  it("opens the result screen when a 1v1 game completes", async () => {
     useAuthStore.getState().login(createJwt("user-2"));
     server.use(
       http.get("**/api/game-sessions/forfeit-win", () =>
@@ -99,16 +99,14 @@ describe("GameSessionPage", () => {
 
     renderGamePage("/game/forfeit-win");
 
-    expect(await screen.findByText("Victory")).toBeInTheDocument();
-    expect(screen.getByText(/opponent forfeited/i)).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByText("Lobby route")).toBeInTheDocument(), { timeout: 2500 });
+    expect(await screen.findByText("Result route")).toBeInTheDocument();
   });
 
-  it("lets players return to lobby from a completed game blocking state", async () => {
+  it("lets players return to lobby from a cancelled game blocking state", async () => {
     const user = userEvent.setup();
     useAuthStore.getState().login(createJwt("user-1"));
 
-    renderGamePage("/game/completed");
+    renderGamePage("/game/cancelled");
 
     await user.click(await screen.findByRole("button", { name: /return to lobby/i }));
 
@@ -121,6 +119,7 @@ function renderGamePage(path: string) {
     <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/game/:sessionId" element={<GameSessionPage />} />
+        <Route path="/game/:sessionId/result" element={<p>Result route</p>} />
         <Route path="/lobby" element={<p>Lobby route</p>} />
       </Routes>
       <ToastProvider />

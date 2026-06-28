@@ -5,6 +5,7 @@ import { ToastProvider } from "./components/ToastProvider";
 import { AccountSettingsPage } from "./features/accountSettings/AccountSettingsPage";
 import { LoginPage } from "./features/auth/LoginPage";
 import { GameSessionPage } from "./features/game/GameSessionPage";
+import { GameResultPage } from "./features/game/GameResultPage";
 import { CategoryListPage } from "./features/questionBank/CategoryListPage";
 import { QuestionBankDashboard } from "./features/questionBank/QuestionBankDashboard";
 import { QuestionBankLayout } from "./features/questionBank/QuestionBankLayout";
@@ -41,6 +42,14 @@ export function App() {
           element={
             <ProtectedRoute>
               <GameSessionPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/game/:sessionId/result"
+          element={
+            <ProtectedRoute>
+              <GameResultPage />
             </ProtectedRoute>
           }
         />

@@ -1,21 +1,19 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { GameBoard } from "./GameBoard";
 import { GamePlayerPanel } from "./GamePlayerPanel";
 import { GameStatusBar } from "./GameStatusBar";
 import { useGameSession } from "./useGameSession";
-import { selectPlayerDisplayName, useGameStore } from "../../stores/gameStore";
+import { useGameStore } from "../../stores/gameStore";
 import { QuestionModal } from "../conquest/QuestionModal";
 import { selectHasPendingConquest } from "../../stores/conquestStore";
 import { BattleQuestionModal } from "../battle/BattleQuestionModal";
 import { selectHasPendingBattle } from "../../stores/battleStore";
 import { LogoutButton } from "../auth/LogoutButton";
-import { useErrorStore } from "../../stores/errorStore";
 
 export function GameSessionPage() {
   const { sessionId } = useParams();
   const navigate = useNavigate();
-  const completedSessionHandledRef = useRef<string | null>(null);
   const {
     session,
     blockingError,
@@ -36,34 +34,17 @@ export function GameSessionPage() {
   } = useGameSession(sessionId);
   const liveMessage = useGameStore((state) => state.liveMessage);
   const candidateTargets = useGameStore((state) => state.candidateTargets);
-  const showError = useErrorStore((state) => state.showError);
   const currentPlayerId = session?.players.find((player) => player.userId === currentUserId)?.id ?? null;
   const conquestPending = selectHasPendingConquest(conquestState);
   const battlePending = selectHasPendingBattle(battleState);
 
   useEffect(() => {
-    if (!session || session.status !== "Completed" || completedSessionHandledRef.current === session.id) {
+    if (!session || session.status !== "Completed") {
       return;
     }
 
-    completedSessionHandledRef.current = session.id;
-    const winner = session.players.find((player) => player.id === session.winnerPlayerId);
-    const currentPlayer = session.players.find((player) => player.userId === currentUserId);
-    const isWinner = Boolean(currentPlayer && currentPlayer.id === session.winnerPlayerId);
-    const winnerName = winner ? selectPlayerDisplayName(winner) : "The remaining player";
-
-    showError({
-      title: isWinner ? "Victory" : "Game completed",
-      message: isWinner ? "Your opponent forfeited. You win!" : `${winnerName} won this game.`,
-      displayMode: "modal",
-    });
-
-    const redirect = window.setTimeout(() => {
-      navigate("/lobby", { replace: true });
-    }, 1500);
-
-    return () => window.clearTimeout(redirect);
-  }, [currentUserId, navigate, session, showError]);
+    navigate(`/game/${session.id}/result`, { replace: true });
+  }, [navigate, session]);
 
   if (isLoading && !session && !blockingError) {
     return (

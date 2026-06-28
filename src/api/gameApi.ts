@@ -1,7 +1,7 @@
 import { apiBaseUrl } from "./apiConfig";
 import { authenticatedRequestJson, HttpError } from "./httpClient";
 import { mapGameActionResult, mapGameSession, mapTurnState, type GameActionResultDto, type GameSessionDto, type TurnStateDto } from "../domain/game/gameMappers";
-import type { GameActionError, GameActionResult, GameSession, MovePieceRequest, TurnState } from "../domain/game/gameTypes";
+import type { GameActionError, GameActionResult, GameCompletionSummary, GameSession, MovePieceRequest, TurnState } from "../domain/game/gameTypes";
 
 type GameRequestOptions = {
   accessToken: string;
@@ -19,6 +19,22 @@ export async function getGameTurn(gameSessionId: string, options: GameRequestOpt
     accessToken: options.accessToken,
   });
   return mapTurnState(response);
+}
+
+export async function getGameCompletionSummary(
+  gameSessionId: string,
+  options: GameRequestOptions,
+): Promise<GameCompletionSummary> {
+  const summary = await authenticatedRequestJson<GameCompletionSummary>(
+    `${apiBaseUrl}/api/game-sessions/${gameSessionId}/completion-summary`,
+    { accessToken: options.accessToken },
+  );
+
+  if (!summary.gameSessionId || !summary.winnerPlayerId || !summary.endedAtUtc || !Array.isArray(summary.players)) {
+    throw new Error("Game completion summary response is malformed.");
+  }
+
+  return summary;
 }
 
 export async function movePiece(

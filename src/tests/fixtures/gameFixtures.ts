@@ -1,4 +1,4 @@
-import type { BoardTile, GameActionResult, GameSession } from "../../domain/game/gameTypes";
+import type { BoardTile, GameActionResult, GameCompletionSummary, GameSession } from "../../domain/game/gameTypes";
 
 const now = "2026-06-16T10:00:00.000Z";
 
@@ -109,6 +109,42 @@ export function gameActionResultFixture({
 export function malformedGameSessionFixture(): GameSession {
   const session = gameSessionFixture();
   return { ...session, tiles: session.tiles.slice(1) };
+}
+
+export function gameCompletionSummaryFixture(gameSessionId = "completed"): GameCompletionSummary {
+  return {
+    gameSessionId,
+    winnerPlayerId: "player-1",
+    endedAtUtc: "2026-06-16T10:30:00.000Z",
+    players: [
+      {
+        playerId: "player-1",
+        userId: "user-1",
+        displayName: "Alice",
+        pieceColor: "Blue",
+        isWinner: true,
+        correctAnswers: 7,
+        totalAnswers: 10,
+        percentage: 70,
+        categories: [
+          { categoryId: "category-csharp", categoryName: "C#", correctAnswers: 5, totalAnswers: 10, percentage: 50 },
+        ],
+      },
+      {
+        playerId: "player-2",
+        userId: "user-2",
+        displayName: "Bob",
+        pieceColor: "Red",
+        isWinner: false,
+        correctAnswers: 3,
+        totalAnswers: 8,
+        percentage: 37.5,
+        categories: [
+          { categoryId: "category-csharp", categoryName: "C#", correctAnswers: 3, totalAnswers: 8, percentage: 37.5 },
+        ],
+      },
+    ],
+  };
 }
 
 function createTiles(gameSessionId: string): BoardTile[] {
