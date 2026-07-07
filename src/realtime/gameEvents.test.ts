@@ -70,6 +70,33 @@ describe("gameEvents", () => {
     expect(toConquestResultEvent(conquestResultFixture()).turnNumber).toBe(2);
   });
 
+  it("maps the wrapped conquest question broadcast received by observing players", () => {
+    const question = gameplayQuestionFixture();
+    const payload = {
+      gameSessionId: question.gameSessionId,
+      questionAttemptId: question.questionAttemptId,
+      playerId: question.playerId,
+      pieceId: question.pieceId,
+      sourceTileId: question.sourceTileId,
+      targetTileId: question.targetTileId,
+      categoryId: question.categoryId,
+      categoryName: question.categoryName,
+      hasFullPayload: true,
+      question: {
+        questionAttemptId: question.questionAttemptId,
+        questionId: question.questionId,
+        categoryId: question.categoryId,
+        categoryName: question.categoryName,
+        questionText: question.questionText,
+        answerOptions: question.answerOptions,
+        expiresAtUtc: question.expiresAtUtc,
+      },
+    };
+
+    expect(isGameplayQuestionEvent(payload)).toBe(true);
+    expect(toGameplayQuestionEvent(payload)).toEqual(question);
+  });
+
   it("maps and guards battle and special field realtime payloads without classifying questions as results", () => {
     const battleQuestion = { ...battleQuestionFixture(), battleAttemptId: "battle-1" };
     const specialQuestion = { ...specialFieldQuestionFixture(), specialFieldAttemptId: "special-1" };

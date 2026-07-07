@@ -123,7 +123,14 @@ export function toGameActionResultEvent(payload: GameActionResultDto): GameActio
 }
 
 export function toGameplayQuestionEvent(payload: GameplayQuestionDto): GameplayQuestion {
-  return mapGameplayQuestion(payload);
+  const event = payload as GameplayQuestionDto & { question?: GameplayQuestionDto | null };
+  return mapGameplayQuestion(event.question ?? event, {
+    gameSessionId: event.gameSessionId,
+    playerId: event.playerId,
+    pieceId: event.pieceId,
+    sourceTileId: event.sourceTileId,
+    targetTileId: event.targetTileId,
+  });
 }
 
 export function toQuestionAttemptEvent(payload: QuestionAttemptEventDto): QuestionAttemptEvent {
@@ -213,12 +220,14 @@ export function isGameTurnAdvancedEvent(payload: unknown): payload is GameTurnAd
 }
 
 export function isGameplayQuestionEvent(payload: unknown): payload is GameplayQuestionDto {
+  const event = payload as GameplayQuestionDto & { question?: GameplayQuestionDto | null };
+  const question = event?.question ?? event;
   return (
     typeof payload === "object" &&
     payload !== null &&
-    typeof (payload as GameplayQuestionDto).questionAttemptId === "string" &&
-    typeof (payload as GameplayQuestionDto).questionId === "string" &&
-    Array.isArray((payload as GameplayQuestionDto).answerOptions)
+    typeof question?.questionAttemptId === "string" &&
+    typeof question.questionId === "string" &&
+    Array.isArray(question.answerOptions)
   );
 }
 
