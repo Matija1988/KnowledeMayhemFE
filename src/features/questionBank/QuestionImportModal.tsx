@@ -38,11 +38,17 @@ export function QuestionImportModal({ categories, isPending, onImport, onClose }
   }
 
   return (
-    <Modal title="Import questions from JSON" onClose={onClose}>
-      <form onSubmit={submit}>
+    <Modal
+      title="Import questions from JSON"
+      className="question-import-modal"
+      closeButtonVariant="icon"
+      onClose={onClose}
+    >
+      <form className="question-import-form" onSubmit={submit}>
         <FormField id="question-import-category" label="Category">
           <select
             id="question-import-category"
+            className="question-import-select"
             value={categoryId}
             onChange={(event) => setCategoryId(event.target.value)}
             disabled={isPending}
@@ -58,6 +64,7 @@ export function QuestionImportModal({ categories, isPending, onImport, onClose }
         <FormField id="question-import-file" label="JSON file" error={error ?? undefined}>
           <input
             id="question-import-file"
+            className="question-import-file"
             type="file"
             accept=".json,application/json"
             disabled={isPending}
